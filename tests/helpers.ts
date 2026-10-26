@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db/client";
 import { esBaseLocal } from "@/db/local";
-import { organizadores } from "@/db/schema";
+import { organizadores, usuarios, type Rol } from "@/db/schema";
 import { crearRifa, type NuevaRifa } from "@/server/rifas";
 
 loadEnvConfig(process.cwd());
@@ -31,7 +31,8 @@ export function conectarBaseDePruebas(): Db {
 
 export async function vaciarTablas(db: Db) {
   await db.execute(
-    sql`truncate movimientos, asignaciones, numeros, compradores, rifas, organizadores restart identity cascade`,
+    sql`truncate movimientos, asignaciones, numeros, compradores, rifas, sesiones, cuentas,
+        verificaciones, limites_de_solicitudes, usuarios, organizadores restart identity cascade`,
   );
 }
 
@@ -48,6 +49,16 @@ export async function crearRifaDePrueba(db: Db, datos: Partial<NuevaRifa> = {}) 
     precioNumero: "50.00",
     ...datos,
   });
+}
+
+/** Inserta un usuario directo en la tabla (sin contraseña), para pruebas que solo necesitan su id. */
+export async function crearUsuarioDePrueba(db: Db, organizadorId: string, rol: Rol = "operador") {
+  const id = crypto.randomUUID();
+  const [usuario] = await db
+    .insert(usuarios)
+    .values({ id, name: `Usuario ${rol}`, email: `${id}@perindio.test`, role: rol, organizadorId })
+    .returning();
+  return usuario;
 }
 
 /** Mueve la fecha límite de un apartado al pasado para simular que venció. */

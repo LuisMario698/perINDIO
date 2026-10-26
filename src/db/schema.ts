@@ -23,9 +23,6 @@ import {
 // de las tablas (no le afecta), pero si la base se aloja en Supabase, su API pública
 // (anon / authenticated) no puede leer ni escribir nada.
 
-// Las columnas de usuario (usuario_id, creada_por) son texto sin llave foránea por ahora;
-// en la fase 3 se enlazan con la tabla de usuarios de Better Auth.
-
 export const estadoRifa = pgEnum("estado_rifa", ["activa", "cerrada"]);
 
 // "apartado" y "vendido" son vigentes: ocupan el número. "liberado" y "cancelado" lo devuelven.
@@ -48,6 +45,11 @@ export const tipoMovimiento = pgEnum("tipo_movimiento", [
 ]);
 
 const creadoEn = () => timestamp({ withTimezone: true }).notNull().defaultNow();
+const actualizadoEn = () =>
+  timestamp({ withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => sql`now()`);
 
 // Dueño de las rifas. Hoy hay uno; existe para soportar varios organizadores después.
 export const organizadores = pgTable("organizadores", {
@@ -55,6 +57,103 @@ export const organizadores = pgTable("organizadores", {
   nombre: text().notNull(),
   creadoEn: creadoEn(),
 }).enableRLS();
+
+// --- Autenticación (Better Auth) ---
+// Los nombres de las propiedades son los que espera Better Auth; src/server/auth-config.ts
+// le indica qué tabla usar para cada modelo. Los ids los genera Better Auth (texto).
+
+export const ROLES = ["admin", "operador"] as const;
+export type Rol = (typeof ROLES)[number];
+
+export const usuarios = pgTable(
+  "usuarios",
+  {
+    id: text().primaryKey(),
+    name: text().notNull(),
+    email: text().notNull().unique(),
+    emailVerified: boolean().notNull().default(false),
+    image: text(),
+    // Campos del plugin admin de Better Auth.
+    role: text().notNull().default("operador"),
+    banned: boolean().notNull().default(false),
+    banReason: text(),
+    banExpires: timestamp({ withTimezone: true }),
+    organizadorId: uuid()
+      .notNull()
+      .references(() => organizadores.id),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: actualizadoEn(),
+  },
+  (t) => [
+    index().on(t.organizadorId),
+    check("usuarios_role", sql`${t.role} in ('admin', 'operador')`),
+  ],
+).enableRLS();
+
+export const sesiones = pgTable(
+  "sesiones",
+  {
+    id: text().primaryKey(),
+    token: text().notNull().unique(),
+    userId: text()
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "cascade" }),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    ipAddress: text(),
+    userAgent: text(),
+    impersonatedBy: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: actualizadoEn(),
+  },
+  (t) => [index().on(t.userId)],
+).enableRLS();
+
+// Credenciales: con correo y contraseña hay una fila con providerId "credential" y el hash.
+export const cuentas = pgTable(
+  "cuentas",
+  {
+    id: text().primaryKey(),
+    accountId: text().notNull(),
+    providerId: text().notNull(),
+    userId: text()
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "cascade" }),
+    accessToken: text(),
+    refreshToken: text(),
+    idToken: text(),
+    accessTokenExpiresAt: timestamp({ withTimezone: true }),
+    refreshTokenExpiresAt: timestamp({ withTimezone: true }),
+    scope: text(),
+    password: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: actualizadoEn(),
+  },
+  (t) => [index().on(t.userId)],
+).enableRLS();
+
+export const verificaciones = pgTable(
+  "verificaciones",
+  {
+    id: text().primaryKey(),
+    identifier: text().notNull(),
+    value: text().notNull(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: actualizadoEn(),
+  },
+  (t) => [index().on(t.identifier)],
+).enableRLS();
+
+// Límite de intentos de login guardado en la base, para que funcione con varias
+// instancias serverless (en memoria cada instancia llevaría su propia cuenta).
+export const limitesDeSolicitudes = pgTable("limites_de_solicitudes", {
+  id: text().primaryKey(),
+  key: text().notNull().unique(),
+  count: integer().notNull(),
+  lastRequest: bigint({ mode: "number" }).notNull(),
+}).enableRLS();
+
+// --- Rifas ---
 
 export const rifas = pgTable(
   "rifas",
@@ -75,10 +174,7 @@ export const rifas = pgTable(
     fechaSorteo: timestamp({ withTimezone: true }),
     estado: estadoRifa().notNull().default("activa"),
     creadoEn: creadoEn(),
-    actualizadoEn: timestamp({ withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => sql`now()`),
+    actualizadoEn: actualizadoEn(),
   },
   (t) => [
     index().on(t.organizadorId),
@@ -149,7 +245,7 @@ export const asignaciones = pgTable(
     fechaPago: timestamp({ withTimezone: true }),
     finalizadaEn: timestamp({ withTimezone: true }),
     observaciones: text(),
-    creadaPor: text(),
+    creadaPor: text().references(() => usuarios.id),
     creadoEn: creadoEn(),
   },
   (t) => [
@@ -208,7 +304,7 @@ export const movimientos = pgTable(
       .references(() => asignaciones.id, { onDelete: "cascade" }),
     tipo: tipoMovimiento().notNull(),
     // null cuando lo hizo el sistema (liberación automática).
-    usuarioId: text(),
+    usuarioId: text().references(() => usuarios.id),
     detalle: jsonb().$type<Record<string, unknown>>(),
     creadoEn: creadoEn(),
   },

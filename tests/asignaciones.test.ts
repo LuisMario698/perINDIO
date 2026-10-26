@@ -14,7 +14,13 @@ import {
   NumerosNoDisponiblesError,
 } from "@/server/errores";
 
-import { codigoDeError, conectarBaseDePruebas, crearRifaDePrueba, vaciarTablas } from "./helpers";
+import {
+  codigoDeError,
+  conectarBaseDePruebas,
+  crearRifaDePrueba,
+  crearUsuarioDePrueba,
+  vaciarTablas,
+} from "./helpers";
 
 const db = conectarBaseDePruebas();
 
@@ -158,7 +164,8 @@ describe("liberarAsignaciones", () => {
       comprador: { nombre: "Ana" },
     });
 
-    await liberarAsignaciones(db, { asignacionIds: [apartado.id], usuarioId: "admin" });
+    const admin = await crearUsuarioDePrueba(db, rifa.organizadorId, "admin");
+    await liberarAsignaciones(db, { asignacionIds: [apartado.id], usuarioId: admin.id });
     expect((await estadoDe(rifa.id, 20)).estado).toBe("disponible");
 
     // Otro comprador puede tomarlo.

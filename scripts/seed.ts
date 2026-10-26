@@ -10,7 +10,9 @@ import {
   liberarAsignaciones,
   type Asignacion,
 } from "@/server/asignaciones";
+import { crearAuth } from "@/server/auth-config";
 import { crearRifa } from "@/server/rifas";
+import { crearUsuario } from "@/server/usuarios";
 
 loadEnvConfig(process.cwd());
 
@@ -46,7 +48,8 @@ async function main() {
   try {
     console.log(`Sembrando ${host} (se reemplazan todos los datos)…`);
     await db.execute(
-      sql`truncate movimientos, asignaciones, numeros, compradores, rifas, organizadores restart identity cascade`,
+      sql`truncate movimientos, asignaciones, numeros, compradores, rifas, sesiones, cuentas,
+          verificaciones, limites_de_solicitudes, usuarios, organizadores restart identity cascade`,
     );
 
     const azar = generadorConSemilla(20261026);
@@ -54,6 +57,15 @@ async function main() {
       .insert(organizadores)
       .values({ nombre: "Organizador demo" })
       .returning();
+
+    // Credenciales de desarrollo definidas en .env (ver .env.example).
+    const admin = await crearUsuario(crearAuth(db), {
+      email: process.env.SEED_ADMIN_EMAIL ?? "admin@perindio.test",
+      nombre: process.env.SEED_ADMIN_NOMBRE ?? "Administrador demo",
+      password: requerida("SEED_ADMIN_PASSWORD"),
+      rol: "admin",
+      organizadorId: organizador.id,
+    });
 
     const nuevos = Array.from({ length: 60 }, (_, i) => ({
       organizadorId: organizador.id,
@@ -74,7 +86,7 @@ async function main() {
       liberacionAutomatica: false,
       fechaSorteo: new Date(Date.now() + 30 * 24 * 3600 * 1000),
     });
-    await poblarRifa(db, azar, principal, compradorIds, {
+    await poblarRifa(db, azar, principal, compradorIds, admin.id, {
       vendidos: 380,
       apartados: 140,
       vencidos: 18,
@@ -90,7 +102,7 @@ async function main() {
       plazoApartadoHoras: 24,
       liberacionAutomatica: true,
     });
-    await poblarRifa(db, azar, express, compradorIds, {
+    await poblarRifa(db, azar, express, compradorIds, admin.id, {
       vendidos: 30,
       apartados: 10,
       vencidos: 5,
@@ -113,6 +125,7 @@ async function main() {
       group by r.nombre, r.creado_en order by r.creado_en
     `);
     console.table(resumen.map((fila) => ({ ...fila })));
+    console.log(`Entra con ${admin.email} y la contraseña SEED_ADMIN_PASSWORD de tu .env.`);
   } finally {
     await db.$client.end();
   }
@@ -124,6 +137,7 @@ async function poblarRifa(
   azar: Azar,
   rifa: { id: string; numeroInicial: number; cantidadNumeros: number; plazoApartadoHoras: number },
   compradorIds: string[],
+  usuarioId: string,
   metas: Metas,
 ) {
   const libres = azar.barajar(
@@ -145,12 +159,13 @@ async function poblarRifa(
       numeros,
       comprador: { id: azar.elegir(compradorIds) },
       pagoConfirmado,
+      usuarioId,
     });
 
   await porCompras(metas.vendidos, async (numeros) => {
     const ventaDirecta = azar.siguiente() < 0.4;
     const asignadas = await apartar(numeros, ventaDirecta);
-    if (!ventaDirecta) await confirmarPago(db, { asignacionIds: asignadas.map((a) => a.id) });
+    if (!ventaDirecta) await confirmarPago(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId });
     const hace = azar.entero(60, 20 * 24 * 60);
     await envejecer(db, asignadas, hace, ventaDirecta ? 0 : azar.entero(0, Math.min(hace, plazoMin)));
   });
@@ -167,7 +182,7 @@ async function poblarRifa(
   await porCompras(metas.liberados, async (numeros) => {
     const asignadas = await apartar(numeros);
     await envejecer(db, asignadas, azar.entero(plazoMin + 120, plazoMin + 72 * 60));
-    await liberarAsignaciones(db, { asignacionIds: asignadas.map((a) => a.id) });
+    await liberarAsignaciones(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId });
     libres.push(...numeros);
   });
 }
@@ -196,6 +211,12 @@ async function envejecer(db: Db, lista: Asignacion[], minutos: number, minutosHa
       creadoEn: sql`${movimientos.creadoEn} - case when ${movimientos.tipo} = 'pago_confirmado' then ${atrasPago} else ${atras} end`,
     })
     .where(inArray(movimientos.asignacionId, ids));
+}
+
+function requerida(nombre: string): string {
+  const valor = process.env[nombre];
+  if (!valor) throw new Error(`Falta ${nombre} en .env (ver .env.example).`);
+  return valor;
 }
 
 type Azar = ReturnType<typeof generadorConSemilla>;

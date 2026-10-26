@@ -21,6 +21,8 @@ pnpm test         # corre las pruebas (usan su propia base, perindio_test)
 pnpm dev          # http://localhost:3000
 ```
 
+Entra con el administrador que crea el seed: `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`.
+
 La página de inicio muestra si la app llega a la base de datos; `GET /api/health` responde lo mismo en JSON.
 
 ## Scripts
@@ -37,6 +39,7 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 | `pnpm db:migrate` | Aplica las migraciones pendientes en `DATABASE_URL` |
 | `pnpm db:seed` | **Reemplaza** los datos con los de demostración; solo corre contra una base local |
 | `pnpm db:studio` | Abre Drizzle Studio para ver los datos |
+| `pnpm usuario:crear` | Crea una cuenta (no hay registro público); `--ayuda` muestra las opciones |
 
 `db:migrate` imprime un par de avisos (`NOTICE ... already exists, skipping`) de la tabla interna de Drizzle; son normales.
 
@@ -53,13 +56,29 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 docker-compose.yml   Postgres local
 drizzle.config.ts    Configuración de drizzle-kit
 drizzle/             Migraciones SQL versionadas
-scripts/seed.ts      Datos de demostración
-src/app/             Páginas y rutas (App Router)
+scripts/             Seed y creación de usuarios
+src/proxy.ts         Manda al login a quien no tiene sesión
+src/app/login/       Pantalla de login
+src/app/(panel)/     Páginas protegidas (requieren sesión)
 src/components/ui/   Componentes de shadcn/ui
 src/db/              Esquema, cliente y utilidades de base de datos
-src/lib/             Utilidades compartidas (formato de números)
-src/server/          Operaciones del negocio: crear rifas, apartar, pagar, liberar, cancelar
-tests/               Pruebas de reglas, liberación y concurrencia
+src/lib/             Utilidades compartidas (formatos, rutas, cliente de auth)
+src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asignaciones, consultas
+tests/               Pruebas de reglas, liberación, concurrencia y autenticación
+```
+
+## Usuarios y acceso
+
+- **No hay registro público.** Las cuentas se crean con `pnpm usuario:crear` (o el seed en desarrollo); el endpoint de registro de Better Auth responde 400.
+- **Roles:** `admin` y `operador`. Hoy los dos ven lo mismo; los permisos por rol se aplican cuando lleguen las pantallas que los necesitan (por ejemplo, crear rifas o administrar usuarios).
+- Cada usuario pertenece a un organizador y solo ve sus rifas.
+- **Protección de páginas:** `src/proxy.ts` manda al login a quien no tiene cookie de sesión, y cada página valida la sesión con `obtenerUsuarioActual()` (`src/server/sesion.ts`). Las acciones del servidor también deben llamarla.
+- **Límite de intentos:** en producción, 3 intentos de login cada 10 segundos por IP, guardados en la tabla `limites_de_solicitudes`.
+- **Desactivar una cuenta** (mientras no haya pantalla de usuarios): `update usuarios set banned = true where email = '...'`; ya no puede entrar. Para cerrar sus sesiones abiertas, borra sus filas de `sesiones`.
+- Lo que se aparta, paga, libera o cancela queda registrado con el usuario que lo hizo (`asignaciones.creada_por`, `movimientos.usuario_id`).
+
+```bash
+pnpm usuario:crear --email ana@ejemplo.com --nombre "Ana López" --rol operador
 ```
 
 ## Modelo de datos
@@ -71,7 +90,8 @@ tests/               Pruebas de reglas, liberación y concurrencia
 | `numeros` | Una fila por número; se generan todas al crear la rifa |
 | `compradores` | Nombre, teléfono opcional y notas |
 | `asignaciones` | Cada apartado o venta de un número: estado (`apartado`, `vendido`, `liberado`, `cancelado`), pago (`pendiente`, `confirmado`), monto, fecha límite y fecha de pago |
-| `movimientos` | Historial de apartados, ventas, pagos, cancelaciones y liberaciones |
+| `movimientos` | Historial de apartados, ventas, pagos, cancelaciones y liberaciones, con el usuario que los hizo |
+| `usuarios`, `sesiones`, `cuentas`, `verificaciones`, `limites_de_solicitudes` | Tablas de Better Auth (las columnas conservan los nombres en inglés que espera la librería) |
 
 El estado de un número no se guarda: sale de su asignación vigente. La vista **`numeros_estado`** junta cada número con su estado (`disponible`, `apartado`, `vendido`), si está vencido, la etiqueta con ceros (`0042`) y los datos del comprador.
 
@@ -95,7 +115,7 @@ Las operaciones de `src/server/asignaciones.ts` son **todo o nada**: si una pers
 
 `pnpm test` crea la base `perindio_test` en el mismo contenedor (si no existe), le aplica las migraciones y vacía las tablas antes de cada prueba. Por seguridad, `TEST_DATABASE_URL` tiene que ser local y terminar en `_test`.
 
-Cubren la creación de rifas, las reglas de la base, cada operación y estos casos de concurrencia:
+Cubren la creación de rifas, las reglas de la base, cada operación, la autenticación (registro público bloqueado, login, cuentas desactivadas, roles) y estos casos de concurrencia:
 
 - 20 apartados simultáneos del mismo número
 - apartados simultáneos con números en común, en distinto orden, sin interbloqueos
@@ -116,9 +136,18 @@ Toda la configuración va en variables de entorno, así que mover la base solo r
 
 1. Crea la base en el proveedor (Supabase, Neon, etc.) y copia la cadena de conexión del **pooler en modo transacción** (en Supabase, puerto 6543). El cliente ya usa `prepare: false`, que ese modo necesita.
 2. Aplica las migraciones contra la nueva base: `DATABASE_URL="<cadena>" pnpm db:migrate`.
-3. Despliega la app (por ejemplo, en Vercel) y configura `DATABASE_URL` en sus variables de entorno.
-4. Verifica con `GET /api/health`.
-5. Programa la liberación automática. En Supabase, con pg_cron (cada 10 minutos):
+3. Despliega la app (por ejemplo, en Vercel) y configura sus variables de entorno:
+   - `DATABASE_URL`: la cadena del paso 1
+   - `BETTER_AUTH_SECRET`: uno nuevo, distinto al de desarrollo (`openssl rand -base64 32`)
+   - `BETTER_AUTH_URL`: la URL pública de la app (por ejemplo `https://rifas.ejemplo.com`)
+4. Crea el primer administrador contra la base de la nube:
+
+   ```bash
+   DATABASE_URL="<cadena>" pnpm usuario:crear --email tu@correo.com --nombre "Tu nombre" --rol admin --organizacion "Nombre del organizador"
+   ```
+
+5. Verifica con `GET /api/health` y entra con esa cuenta.
+6. Programa la liberación automática. En Supabase, con pg_cron (cada 10 minutos):
 
    ```sql
    select cron.schedule('liberar-apartados', '*/10 * * * *', $$select liberar_apartados_vencidos()$$);
