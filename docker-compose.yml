@@ -1,0 +1,24 @@
+# Postgres solo para desarrollo local. En la nube la app usa el DATABASE_URL del proveedor.
+# Compose lee los valores de .env; los de abajo son los predeterminados.
+services:
+  db:
+    image: postgres:17-alpine # misma versión mayor que Supabase
+    container_name: perindio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-perindio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-perindio}
+      POSTGRES_DB: ${POSTGRES_DB:-perindio}
+      TZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - perindio-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  perindio-db-data:
