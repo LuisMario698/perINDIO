@@ -1,16 +1,19 @@
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { db } from "@/db";
-import { formatearDinero, formatearEntero } from "@/lib/formato";
+import { formatearDinero, formatearEntero, formatearFecha } from "@/lib/formato";
 import { listarRifasConResumen, type RifaConResumen } from "@/server/consultas";
 import { obtenerUsuarioActual } from "@/server/sesion";
 
@@ -31,20 +34,38 @@ export default function PaginaRifas() {
 async function ListaRifas() {
   const usuario = await obtenerUsuarioActual();
   const lista = await listarRifasConResumen(db, usuario.organizadorId);
+  const esAdmin = usuario.rol === "admin";
 
-  if (lista.length === 0) {
-    return <p className="text-sm text-muted-foreground">Todavía no hay rifas.</p>;
-  }
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {lista.map((rifa) => (
-        <TarjetaRifa key={rifa.id} rifa={rifa} />
-      ))}
+    <div className="space-y-4">
+      {esAdmin && lista.length > 0 && (
+        <div className="flex justify-end">
+          <Link href="/rifas/nueva" className={buttonVariants()}>
+            Nueva rifa
+          </Link>
+        </div>
+      )}
+      {lista.length === 0 ? (
+        <div className="space-y-3 rounded-xl border border-dashed p-8 text-center">
+          <p className="text-sm text-muted-foreground">Todavía no hay rifas.</p>
+          {esAdmin && (
+            <Link href="/rifas/nueva" className={buttonVariants()}>
+              Crear la primera rifa
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {lista.map((rifa) => (
+            <TarjetaRifa key={rifa.id} rifa={rifa} esAdmin={esAdmin} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function TarjetaRifa({ rifa }: { rifa: RifaConResumen }) {
+function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean }) {
   const datos = [
     { etiqueta: "Disponibles", valor: rifa.disponibles },
     { etiqueta: "Apartados", valor: rifa.apartados },
@@ -78,8 +99,19 @@ function TarjetaRifa({ rifa }: { rifa: RifaConResumen }) {
           {rifa.liberacionAutomatica
             ? "Los apartados vencidos se liberan solos."
             : "Los apartados vencidos se liberan a mano."}
+          {rifa.fechaSorteo && ` Sorteo: ${formatearFecha(rifa.fechaSorteo)}.`}
         </p>
       </CardContent>
+      {esAdmin && (
+        <CardFooter className="justify-end">
+          <Link
+            href={`/rifas/${rifa.id}/configuracion`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Configurar
+          </Link>
+        </CardFooter>
+      )}
     </Card>
   );
 }

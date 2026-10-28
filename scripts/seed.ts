@@ -59,13 +59,23 @@ async function main() {
       .returning();
 
     // Credenciales de desarrollo definidas en .env (ver .env.example).
-    const admin = await crearUsuario(crearAuth(db), {
+    const auth = crearAuth(db);
+    const admin = await crearUsuario(auth, {
       email: process.env.SEED_ADMIN_EMAIL ?? "admin@perindio.test",
       nombre: process.env.SEED_ADMIN_NOMBRE ?? "Administrador demo",
       password: requerida("SEED_ADMIN_PASSWORD"),
       rol: "admin",
       organizadorId: organizador.id,
     });
+    const operador = process.env.SEED_OPERADOR_PASSWORD
+      ? await crearUsuario(auth, {
+          email: process.env.SEED_OPERADOR_EMAIL ?? "operador@perindio.test",
+          nombre: process.env.SEED_OPERADOR_NOMBRE ?? "Operador demo",
+          password: process.env.SEED_OPERADOR_PASSWORD,
+          rol: "operador",
+          organizadorId: organizador.id,
+        })
+      : null;
 
     const nuevos = Array.from({ length: 60 }, (_, i) => ({
       organizadorId: organizador.id,
@@ -84,7 +94,7 @@ async function main() {
       precioNumero: "100.00",
       plazoApartadoHoras: 48,
       liberacionAutomatica: false,
-      fechaSorteo: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+      fechaSorteo: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
     });
     await poblarRifa(db, azar, principal, compradorIds, admin.id, {
       vendidos: 380,
@@ -126,6 +136,9 @@ async function main() {
     `);
     console.table(resumen.map((fila) => ({ ...fila })));
     console.log(`Entra con ${admin.email} y la contraseña SEED_ADMIN_PASSWORD de tu .env.`);
+    if (operador) {
+      console.log(`Operador: ${operador.email} con SEED_OPERADOR_PASSWORD.`);
+    }
   } finally {
     await db.$client.end();
   }

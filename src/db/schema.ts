@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -171,7 +172,8 @@ export const rifas = pgTable(
     precioNumero: numeric({ precision: 10, scale: 2 }).notNull(),
     plazoApartadoHoras: integer().notNull().default(48),
     liberacionAutomatica: boolean().notNull().default(false),
-    fechaSorteo: timestamp({ withTimezone: true }),
+    // Solo el día ("2026-12-20"): sin hora, así no depende de la zona horaria del servidor.
+    fechaSorteo: date({ mode: "string" }),
     estado: estadoRifa().notNull().default("activa"),
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),

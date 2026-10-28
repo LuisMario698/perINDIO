@@ -1,0 +1,1 @@
+ALTER TABLE "rifas" ALTER COLUMN "fecha_sorteo" SET DATA TYPE date;

@@ -39,3 +39,10 @@ export async function obtenerUsuarioActual(): Promise<UsuarioActual> {
     organizadorId: user.organizadorId,
   };
 }
+
+/** Para páginas solo de administración: a un operador lo regresa al inicio. */
+export async function obtenerAdminActual(): Promise<UsuarioActual> {
+  const usuario = await obtenerUsuarioActual();
+  if (usuario.rol !== "admin") redirect("/");
+  return usuario;
+}

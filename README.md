@@ -21,7 +21,7 @@ pnpm test         # corre las pruebas (usan su propia base, perindio_test)
 pnpm dev          # http://localhost:3000
 ```
 
-Entra con el administrador que crea el seed: `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`.
+Entra con el administrador que crea el seed (`SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`). Para ver la app como operador, usa `SEED_OPERADOR_EMAIL` y `SEED_OPERADOR_PASSWORD`.
 
 La página de inicio muestra si la app llega a la base de datos; `GET /api/health` responde lo mismo en JSON.
 
@@ -49,6 +49,7 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 
 - **Rifa Pro Fondos 2026**: 2,000 números (0000–1999) a $100, plazo de 48 h, liberación manual. Tiene ventas, apartados vigentes, 18 apartados vencidos esperando que el organizador los libere y algunas liberaciones en el historial.
 - **Rifa Express**: 100 números (00–99) a $50, plazo de 24 h, liberación automática, con 5 apartados vencidos que se liberan en cuanto corre la liberación automática.
+- Dos cuentas: un administrador y un operador.
 
 ## Estructura
 
@@ -59,18 +60,31 @@ drizzle/             Migraciones SQL versionadas
 scripts/             Seed y creación de usuarios
 src/proxy.ts         Manda al login a quien no tiene sesión
 src/app/login/       Pantalla de login
-src/app/(panel)/     Páginas protegidas (requieren sesión)
+src/app/(panel)/     Páginas protegidas (requieren sesión): lista de rifas, nueva rifa, configuración
 src/components/ui/   Componentes de shadcn/ui
 src/db/              Esquema, cliente y utilidades de base de datos
-src/lib/             Utilidades compartidas (formatos, rutas, cliente de auth)
+src/lib/             Utilidades compartidas (formatos, rutas, validación, cliente de auth)
 src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asignaciones, consultas
-tests/               Pruebas de reglas, liberación, concurrencia y autenticación
+tests/               Pruebas de reglas, liberación, concurrencia, autenticación y validación
 ```
+
+## Rifas
+
+Solo un administrador puede crear, configurar o eliminar rifas (botones **Nueva rifa** y **Configurar** del inicio). El operador ve la lista, y si abre esas pantallas por URL lo regresa al inicio; las acciones del servidor también revisan el rol.
+
+- **Crear:** nombre, descripción, rango de números (primer número, cantidad y dígitos), precio, plazo para pagar un apartado, liberación automática y fecha del sorteo. Los dígitos se calculan solos a partir del número más alto, y una vista previa muestra la numeración (por ejemplo, "del 0000 al 1999"). Al crearla se generan todos sus números.
+- **Configurar:** todo se puede cambiar, con dos límites:
+  - El **rango y los dígitos** solo se pueden cambiar mientras la rifa no tenga ninguna asignación (ni siquiera liberada o cancelada), porque regenerar los números borraría ese historial. Después se muestran pero no se pueden editar.
+  - El **precio** nuevo solo aplica a los apartados que se hagan después; cada apartado guarda el precio con el que se hizo.
+- **Cerrar:** en la configuración, el estado "Cerrada" impide nuevos apartados y ventas.
+- **Eliminar:** solo si la rifa nunca tuvo asignaciones, con confirmación. Si ya tuvo, se puede cerrar.
+- Si alguien cambia el rango mientras otra persona aparta, Postgres los pone en fila (la rifa se bloquea durante el cambio): o el apartado entra primero y el cambio de rango se rechaza, o el rango cambia primero y el apartado se valida contra el rango nuevo.
+- La validación del formulario está en `src/lib/validacion/rifa.ts` (zod, mensajes en español) y las operaciones en `src/server/rifas.ts`.
 
 ## Usuarios y acceso
 
 - **No hay registro público.** Las cuentas se crean con `pnpm usuario:crear` (o el seed en desarrollo); el endpoint de registro de Better Auth responde 400.
-- **Roles:** `admin` y `operador`. Hoy los dos ven lo mismo; los permisos por rol se aplican cuando lleguen las pantallas que los necesitan (por ejemplo, crear rifas o administrar usuarios).
+- **Roles:** `admin` y `operador`. Solo el admin crea, configura y elimina rifas; los permisos del resto de las pantallas se definen conforme lleguen.
 - Cada usuario pertenece a un organizador y solo ve sus rifas.
 - **Protección de páginas:** `src/proxy.ts` manda al login a quien no tiene cookie de sesión, y cada página valida la sesión con `obtenerUsuarioActual()` (`src/server/sesion.ts`). Las acciones del servidor también deben llamarla.
 - **Límite de intentos:** en producción, 3 intentos de login cada 10 segundos por IP, guardados en la tabla `limites_de_solicitudes`.
@@ -115,12 +129,13 @@ Las operaciones de `src/server/asignaciones.ts` son **todo o nada**: si una pers
 
 `pnpm test` crea la base `perindio_test` en el mismo contenedor (si no existe), le aplica las migraciones y vacía las tablas antes de cada prueba. Por seguridad, `TEST_DATABASE_URL` tiene que ser local y terminar en `_test`.
 
-Cubren la creación de rifas, las reglas de la base, cada operación, la autenticación (registro público bloqueado, login, cuentas desactivadas, roles) y estos casos de concurrencia:
+Cubren la creación, configuración y eliminación de rifas, la validación del formulario, las reglas de la base, cada operación, la autenticación (registro público bloqueado, login, cuentas desactivadas, roles) y estos casos de concurrencia:
 
 - 20 apartados simultáneos del mismo número
 - apartados simultáneos con números en común, en distinto orden, sin interbloqueos
 - confirmar un pago mientras corre la liberación automática
 - varias liberaciones automáticas a la vez
+- cambiar el rango de una rifa mientras alguien aparta
 
 ## Cambios en la base de datos
 

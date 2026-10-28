@@ -43,7 +43,9 @@ export async function apartarNumeros(db: Db, datos: ApartarNumeros): Promise<Asi
   }
 
   return db.transaction(async (tx) => {
-    const [rifa] = await tx.select().from(rifas).where(eq(rifas.id, datos.rifaId));
+    // FOR SHARE: varios apartados pueden correr juntos, pero ninguno mientras alguien cambia
+    // el rango de la rifa (actualizarRifa la toma con FOR UPDATE).
+    const [rifa] = await tx.select().from(rifas).where(eq(rifas.id, datos.rifaId)).for("share");
     if (!rifa) throw new ErrorDeNegocio("La rifa no existe.");
     if (rifa.estado !== "activa") throw new ErrorDeNegocio("La rifa está cerrada.");
 
