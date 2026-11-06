@@ -11,6 +11,7 @@ import {
   formatearPorcentaje,
 } from "@/lib/formato";
 import { esUuid } from "@/lib/validacion/rifa";
+import { NOMBRE_PDF, TIPOS_PDF } from "@/lib/pdfs";
 import { liberarApartadosVencidos } from "@/server/asignaciones";
 import { listarOcupados, obtenerRifa } from "@/server/consultas";
 import { obtenerUsuarioActual } from "@/server/sesion";
@@ -72,6 +73,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
           </p>
         </div>
         <div className="flex gap-2">
+          <MenuPdf rifaId={rifa.id} />
           <Link
             href={`/rifas/${rifa.id}/historial`}
             className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -107,5 +109,36 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
         }}
       />
     </div>
+  );
+}
+
+/** Menú desplegable sin JavaScript (details/summary); cada PDF se abre en otra pestaña. */
+function MenuPdf({ rifaId }: { rifaId: string }) {
+  return (
+    <details className="group relative">
+      <summary
+        className={buttonVariants({
+          variant: "outline",
+          size: "sm",
+          className: "cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+        })}
+      >
+        Imprimir PDF
+      </summary>
+      <ul className="absolute right-0 z-30 mt-1 w-60 rounded-lg border bg-background p-1 shadow-lg">
+        {TIPOS_PDF.map((tipo) => (
+          <li key={tipo}>
+            <a
+              href={`/rifas/${rifaId}/pdf/${tipo}`}
+              target="_blank"
+              rel="noopener"
+              className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
+            >
+              {NOMBRE_PDF[tipo]}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

@@ -2,7 +2,7 @@
 
 Sistema web para administrar rifas: números disponibles, apartados y vendidos, seguimiento de pagos, liberación de apartados vencidos y listas en PDF.
 
-**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Drizzle ORM · PostgreSQL 17 · Vitest.
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Drizzle ORM · PostgreSQL 17 · jsPDF · Vitest.
 
 ## Requisitos
 
@@ -106,6 +106,19 @@ Cada rifa tiene su tablero (`/rifas/<id>`, botón **Ver números**), disponible 
 - En celular, mientras se eligen números aparece una barra con el total; el formulario se abre como hoja inferior.
 - Cada operación queda en el historial con el usuario que la hizo. Las acciones del servidor verifican que la rifa sea del organizador del usuario y solo tocan asignaciones de esa rifa.
 
+## PDF para imprimir
+
+Desde el tablero, **Imprimir PDF** abre en otra pestaña cualquiera de estos cuatro documentos (tamaño carta, listos para imprimir o guardar):
+
+| PDF | Contenido |
+| --- | --- |
+| Números disponibles | Cuadrícula ordenada solo con los números libres, sin datos de compradores, como las listas impresas tradicionales (10 columnas con 4 dígitos) |
+| Lista completa | Todos los números con su estado y comprador, en dos bloques por hoja (2,000 números en 25 hojas) |
+| Apartados pendientes de pago | Agrupados por comprador, con teléfono, fecha de apartado, vencimiento (vencidos en negritas) y el total por cobrar |
+| Ventas confirmadas | Números pagados con comprador, fecha de pago y el total cobrado |
+
+Cada PDF se genera en el servidor al momento de pedirlo (`/rifas/<id>/pdf/<tipo>`), así que refleja el estado registrado en ese instante; no se guarda en disco. Requiere sesión y solo entrega rifas del organizador del usuario. Usa las fuentes estándar de PDF (sin archivos de fuentes que desplegar) y pesa menos de 100 KB incluso con 2,000 números. El código está en `src/server/pdf.ts`.
+
 ## Historial
 
 Cada rifa tiene su historial (botón **Historial** del tablero, o **Ver historial del 0042** desde el detalle de un número): apartados, ventas, pagos, cancelaciones (con su motivo) y liberaciones, con la fecha, el comprador y quién lo hizo ("Sistema" para la liberación automática). Se filtra por tipo de movimiento o por número y se pagina de 100 en 100, del más reciente al más antiguo.
@@ -187,7 +200,7 @@ Cubren la creación, configuración y eliminación de rifas, la validación del 
 - varias liberaciones automáticas a la vez
 - cambiar el rango de una rifa mientras alguien aparta
 
-También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación), el secreto del cron y los montos del resumen.
+También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación), el secreto del cron, los montos del resumen y el contenido de cada PDF.
 
 ## Cambios en la base de datos
 

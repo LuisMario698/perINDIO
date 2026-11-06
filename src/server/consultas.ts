@@ -137,3 +137,25 @@ export async function listarMovimientos(
 }
 
 export type Movimiento = Awaited<ReturnType<typeof listarMovimientos>>["movimientos"][number];
+
+/** Todos los números de la rifa con su estado y asignación vigente, en orden, para los PDF. */
+export async function listarNumerosParaPdf(db: Db, rifaId: string) {
+  return db
+    .select({
+      numero: numerosEstado.numero,
+      estado: numerosEstado.estado,
+      vencido: numerosEstado.vencido,
+      estadoPago: numerosEstado.estadoPago,
+      compradorNombre: numerosEstado.compradorNombre,
+      compradorTelefono: numerosEstado.compradorTelefono,
+      monto: numerosEstado.monto,
+      asignadoEn: numerosEstado.asignadoEn,
+      fechaLimite: numerosEstado.fechaLimite,
+      fechaPago: numerosEstado.fechaPago,
+    })
+    .from(numerosEstado)
+    .where(eq(numerosEstado.rifaId, rifaId))
+    .orderBy(numerosEstado.numero);
+}
+
+export type NumeroParaPdf = Awaited<ReturnType<typeof listarNumerosParaPdf>>[number];
