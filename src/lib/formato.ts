@@ -1,11 +1,27 @@
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
+const dineroRedondo = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  maximumFractionDigits: 0,
+});
 const entero = new Intl.NumberFormat("es-MX");
+const porcentaje = new Intl.NumberFormat("es-MX", { style: "percent", maximumFractionDigits: 0 });
 // Las fechas sin hora ("2026-12-20") se leen como medianoche UTC; se formatean en UTC para no cambiar de día.
 const fecha = new Intl.DateTimeFormat("es-MX", { dateStyle: "long", timeZone: "UTC" });
 
 /** "1500" o 1500 → "$1,500.00" */
 export function formatearDinero(monto: string | number): string {
   return dinero.format(Number(monto));
+}
+
+/** "38000.00" → "$38,000" (para cifras grandes de un resumen) */
+export function formatearDineroRedondo(monto: string | number): string {
+  return dineroRedondo.format(Number(monto));
+}
+
+/** 0.19 → "19 %" */
+export function formatearPorcentaje(fraccion: number): string {
+  return porcentaje.format(fraccion);
 }
 
 /** 2000 → "2,000" */

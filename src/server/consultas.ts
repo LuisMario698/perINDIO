@@ -12,8 +12,10 @@ import {
 } from "@/db/schema";
 
 /**
- * Rifas del organizador con el conteo de sus números por estado, de la más reciente a la más antigua.
- * Los apartados vencidos se cuentan aparte, así que los cuatro conteos suman el total de números.
+ * Rifas del organizador con el conteo de sus números por estado y el dinero cobrado y por
+ * cobrar, de la más reciente a la más antigua. Los apartados vencidos se cuentan aparte, así
+ * que los cuatro conteos suman el total de números. Los montos son el precio guardado en cada
+ * asignación (texto con dos decimales).
  */
 export async function listarRifasConResumen(db: Db, organizadorId: string) {
   return db
@@ -29,6 +31,9 @@ export async function listarRifasConResumen(db: Db, organizadorId: string) {
       apartados: sql<number>`count(*) filter (where ${numerosEstado.estado} = 'apartado' and not ${numerosEstado.vencido})::int`,
       vencidos: sql<number>`count(*) filter (where ${numerosEstado.vencido})::int`,
       vendidos: sql<number>`count(*) filter (where ${numerosEstado.estado} = 'vendido')::int`,
+      cobrado: sql<string>`coalesce(sum(${numerosEstado.monto}) filter (where ${numerosEstado.estadoPago} = 'confirmado'), 0)::numeric(14, 2)`,
+      porCobrar: sql<string>`coalesce(sum(${numerosEstado.monto}) filter (where ${numerosEstado.estadoPago} = 'pendiente'), 0)::numeric(14, 2)`,
+      porCobrarVencido: sql<string>`coalesce(sum(${numerosEstado.monto}) filter (where ${numerosEstado.vencido}), 0)::numeric(14, 2)`,
     })
     .from(rifas)
     .innerJoin(numerosEstado, eq(numerosEstado.rifaId, rifas.id))

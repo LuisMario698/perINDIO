@@ -20,12 +20,12 @@ export const metadata = { title: "Historial · perINDIO" };
 const POR_PAGINA = 100;
 
 const PUNTO: Record<TipoMovimiento, string> = {
-  apartado: "bg-amber-400",
-  venta: "bg-emerald-500",
-  pago_confirmado: "bg-emerald-500",
+  apartado: "bg-amber-500",
+  venta: "bg-emerald-600",
+  pago_confirmado: "bg-emerald-600",
   cancelacion: "bg-zinc-400",
-  liberacion_manual: "bg-red-400",
-  liberacion_automatica: "bg-red-400",
+  liberacion_manual: "bg-red-500",
+  liberacion_automatica: "bg-red-500",
 };
 
 // Los filtros vienen de la URL: lo que no se entienda se ignora en vez de fallar.

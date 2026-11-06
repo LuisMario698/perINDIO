@@ -1,9 +1,10 @@
+import { COLOR_ESTADO, type EstadoVisible } from "@/lib/colores-estado";
 import type { NumeroOcupado } from "@/server/consultas";
 
 import type { EstadoTablero } from "./acciones";
 
 /** Cómo se ve un número en el tablero. Un apartado vencido se distingue del vigente. */
-export type Categoria = "disponible" | "apartado" | "vencido" | "vendido";
+export type Categoria = EstadoVisible;
 
 export type Filtro = "todos" | Categoria | "pendientes";
 
@@ -47,12 +48,7 @@ export const ESTILO_CATEGORIA: Record<Categoria, string> = {
 };
 
 /** Punto de color para leyendas y filtros. */
-export const PUNTO_CATEGORIA: Record<Categoria, string> = {
-  disponible: "border border-border bg-background",
-  apartado: "bg-amber-400",
-  vencido: "bg-red-400",
-  vendido: "bg-emerald-500",
-};
+export const PUNTO_CATEGORIA: Record<Categoria, string> = COLOR_ESTADO;
 
 export const FILTROS: { valor: Filtro; nombre: string; categoria?: Categoria }[] = [
   { valor: "todos", nombre: "Todos" },

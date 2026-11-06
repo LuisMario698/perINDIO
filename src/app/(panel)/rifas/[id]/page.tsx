@@ -4,7 +4,12 @@ import { Suspense } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { db } from "@/db";
-import { formatearDinero, formatearEntero, formatearFecha } from "@/lib/formato";
+import {
+  formatearDinero,
+  formatearEntero,
+  formatearFecha,
+  formatearPorcentaje,
+} from "@/lib/formato";
 import { esUuid } from "@/lib/validacion/rifa";
 import { liberarApartadosVencidos } from "@/server/asignaciones";
 import { listarOcupados, obtenerRifa } from "@/server/consultas";
@@ -36,6 +41,12 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
   await liberarApartadosVencidos(db);
   const ocupados = await listarOcupados(db, rifa.id);
 
+  const sumar = (pago: "confirmado" | "pendiente") =>
+    ocupados
+      .filter((o) => o.estadoPago === pago)
+      .reduce((total, o) => total + Number(o.monto ?? 0), 0);
+  const vendidos = ocupados.filter((o) => o.estado === "vendido").length;
+
   const detalles = [
     `${formatearEntero(rifa.cantidadNumeros)} números`,
     `${formatearDinero(rifa.precioNumero)} cada uno`,
@@ -53,6 +64,12 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
           </Link>
           <h1 className="text-xl font-semibold tracking-tight">{rifa.nombre}</h1>
           <p className="text-sm text-muted-foreground">{detalles.join(" · ")}</p>
+          <p className="text-sm">
+            Cobrado <strong className="tabular-nums">{formatearDinero(sumar("confirmado"))}</strong>{" "}
+            · por cobrar{" "}
+            <strong className="tabular-nums">{formatearDinero(sumar("pendiente"))}</strong> ·{" "}
+            {formatearPorcentaje(vendidos / rifa.cantidadNumeros)} vendido
+          </p>
         </div>
         <div className="flex gap-2">
           <Link

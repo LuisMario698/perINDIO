@@ -68,6 +68,19 @@ src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asign
 tests/               Pruebas de reglas, liberación, concurrencia, autenticación, validación e historial
 ```
 
+## Resumen (inicio)
+
+La página de inicio muestra, para todas las rifas juntas:
+
+- **Cobrado:** suma de los pagos confirmados.
+- **Por cobrar:** suma de los apartados sin pagar (vigentes y vencidos).
+- **Vendidos:** cuántos números y qué porcentaje del total.
+- **Vencidos:** cuántos apartados vencieron sin pago y cuánto dinero representan (resaltado si hay alguno).
+
+Y una tarjeta por rifa con lo cobrado y por cobrar, el porcentaje vendido, una barra con la proporción de vendidos, apartados, vencidos y disponibles, y accesos a sus números, su historial y (admin) su configuración. El tablero de cada rifa repite lo cobrado, lo pendiente y el avance arriba de la cuadrícula.
+
+Los montos salen del precio guardado en cada apartado, así que un cambio de precio no altera lo ya registrado. Los colores de los estados (verde, ámbar y rojo) se eligieron para distinguirse también con daltonismo, y siempre van con su nombre.
+
 ## Rifas
 
 Solo un administrador puede crear, configurar o eliminar rifas (botones **Nueva rifa** y **Configurar** del inicio). El operador ve la lista, y si abre esas pantallas por URL lo regresa al inicio; las acciones del servidor también revisan el rol.
@@ -174,7 +187,7 @@ Cubren la creación, configuración y eliminación de rifas, la validación del 
 - varias liberaciones automáticas a la vez
 - cambiar el rango de una rifa mientras alguien aparta
 
-También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación) y el secreto del cron.
+También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación), el secreto del cron y los montos del resumen.
 
 ## Cambios en la base de datos
 
