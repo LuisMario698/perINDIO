@@ -18,12 +18,17 @@ export function formatearFecha(dia: string): string {
   return fecha.format(new Date(`${dia}T00:00:00Z`));
 }
 
-// Fecha y hora en la zona horaria de quien la ve: usarlas solo en componentes de cliente
-// que se muestran después de una interacción, para no generar diferencias de hidratación.
-const fechaHora = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" });
+// Las horas se muestran siempre en la zona del organizador (no en la del servidor, que en la
+// nube es UTC). Al ser la misma en servidor y navegador, no hay diferencias de hidratación.
+export const ZONA_HORARIA = process.env.NEXT_PUBLIC_ZONA_HORARIA || "America/Mexico_City";
+const fechaHora = new Intl.DateTimeFormat("es-MX", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: ZONA_HORARIA,
+});
 const relativo = new Intl.RelativeTimeFormat("es-MX", { numeric: "auto" });
 
-/** 2026-11-06T20:30Z → "6 nov 2026, 14:30" (hora local del navegador) */
+/** 2026-11-06T20:30Z → "6 nov 2026, 2:30 p.m." (en ZONA_HORARIA) */
 export function formatearFechaHora(valor: Date | string): string {
   return fechaHora.format(new Date(valor));
 }

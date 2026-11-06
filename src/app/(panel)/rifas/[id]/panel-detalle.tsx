@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "cn";
+import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +91,12 @@ export function PanelDetalle({
         {ocupado.fechaPago && <Dato nombre="Pagado">{formatearFechaHora(ocupado.fechaPago)}</Dato>}
         {ocupado.observaciones && <Dato nombre="Notas">{ocupado.observaciones}</Dato>}
       </dl>
+      <Link
+        href={`/rifas/${rifa.id}/historial?numero=${ocupado.numero}`}
+        className="inline-block text-sm text-muted-foreground underline hover:text-foreground"
+      >
+        Ver historial del {etiqueta}
+      </Link>
 
       <div className="space-y-2">
         {pendiente && (

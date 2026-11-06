@@ -13,6 +13,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Todo menos el login, la API de autenticación, el health check y los archivos estáticos.
-  matcher: ["/((?!login|api/auth|api/health|_next/static|_next/image|favicon.ico).*)"],
+  // Todo menos el login, la API de autenticación, el health check, el cron (que se protege
+  // con su propio secreto) y los archivos estáticos.
+  matcher: ["/((?!login|api/auth|api/health|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };

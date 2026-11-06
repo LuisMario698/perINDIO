@@ -224,6 +224,17 @@ async function envejecer(db: Db, lista: Asignacion[], minutos: number, minutosHa
       creadoEn: sql`${movimientos.creadoEn} - case when ${movimientos.tipo} = 'pago_confirmado' then ${atrasPago} else ${atras} end`,
     })
     .where(inArray(movimientos.asignacionId, ids));
+
+  // El historial guarda la fecha límite con la que se apartó; se recorre igual que la del apartado.
+  await db.execute(sql`
+    update movimientos m
+    set detalle = jsonb_set(m.detalle, '{fechaLimite}', to_jsonb(a.fecha_limite))
+    from asignaciones a
+    where a.id = m.asignacion_id
+      and m.asignacion_id in ${ids}
+      and a.fecha_limite is not null
+      and m.detalle ? 'fechaLimite'
+  `);
 }
 
 function requerida(nombre: string): string {

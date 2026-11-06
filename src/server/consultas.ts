@@ -1,7 +1,15 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 
 import type { Db } from "@/db/client";
-import { numerosEstado, rifas } from "@/db/schema";
+import {
+  asignaciones,
+  compradores,
+  movimientos,
+  numeros,
+  numerosEstado,
+  rifas,
+  usuarios,
+} from "@/db/schema";
 
 /**
  * Rifas del organizador con el conteo de sus números por estado, de la más reciente a la más antigua.
@@ -67,3 +75,60 @@ export async function listarOcupados(db: Db, rifaId: string) {
 }
 
 export type NumeroOcupado = Awaited<ReturnType<typeof listarOcupados>>[number];
+
+export type TipoMovimiento = (typeof movimientos.$inferSelect)["tipo"];
+
+export type FiltroMovimientos = {
+  tipo?: TipoMovimiento;
+  numero?: number;
+  /** Id del último movimiento de la página anterior: devuelve los anteriores a él. */
+  antesDe?: number;
+  limite?: number;
+};
+
+/**
+ * Historial de una rifa, del más reciente al más antiguo, con el número, el comprador y el
+ * usuario que hizo cada operación (null si fue el sistema). Paginado por cursor.
+ */
+export async function listarMovimientos(
+  db: Db,
+  rifaId: string,
+  { tipo, numero, antesDe, limite = 100 }: FiltroMovimientos = {},
+) {
+  const filas = await db
+    .select({
+      id: movimientos.id,
+      tipo: movimientos.tipo,
+      creadoEn: movimientos.creadoEn,
+      detalle: movimientos.detalle,
+      numero: numeros.numero,
+      comprador: compradores.nombre,
+      usuario: usuarios.name,
+    })
+    .from(movimientos)
+    .innerJoin(numeros, eq(numeros.id, movimientos.numeroId))
+    .innerJoin(asignaciones, eq(asignaciones.id, movimientos.asignacionId))
+    .innerJoin(compradores, eq(compradores.id, asignaciones.compradorId))
+    .leftJoin(usuarios, eq(usuarios.id, movimientos.usuarioId))
+    .where(
+      and(
+        eq(movimientos.rifaId, rifaId),
+        tipo ? eq(movimientos.tipo, tipo) : undefined,
+        numero !== undefined ? eq(numeros.numero, numero) : undefined,
+        // Se ordena por fecha y, a igual fecha, por id; el cursor compara la misma pareja.
+        antesDe
+          ? sql`(${movimientos.creadoEn}, ${movimientos.id}) < (select creado_en, id from movimientos where id = ${antesDe})`
+          : undefined,
+      ),
+    )
+    .orderBy(desc(movimientos.creadoEn), desc(movimientos.id))
+    .limit(limite + 1);
+
+  const pagina = filas.slice(0, limite);
+  return {
+    movimientos: pagina,
+    siguiente: filas.length > limite ? pagina[pagina.length - 1].id : null,
+  };
+}
+
+export type Movimiento = Awaited<ReturnType<typeof listarMovimientos>>["movimientos"][number];

@@ -54,14 +54,22 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
           <h1 className="text-xl font-semibold tracking-tight">{rifa.nombre}</h1>
           <p className="text-sm text-muted-foreground">{detalles.join(" · ")}</p>
         </div>
-        {usuario.rol === "admin" && (
+        <div className="flex gap-2">
           <Link
-            href={`/rifas/${rifa.id}/configuracion`}
+            href={`/rifas/${rifa.id}/historial`}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
-            Configurar
+            Historial
           </Link>
-        )}
+          {usuario.rol === "admin" && (
+            <Link
+              href={`/rifas/${rifa.id}/configuracion`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Configurar
+            </Link>
+          )}
+        </div>
       </div>
       <Tablero
         rifa={{

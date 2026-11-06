@@ -65,7 +65,7 @@ src/components/ui/   Componentes de shadcn/ui
 src/db/              Esquema, cliente y utilidades de base de datos
 src/lib/             Utilidades compartidas (formatos, rutas, validación, cliente de auth)
 src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asignaciones, consultas
-tests/               Pruebas de reglas, liberación, concurrencia, autenticación y validación
+tests/               Pruebas de reglas, liberación, concurrencia, autenticación, validación e historial
 ```
 
 ## Rifas
@@ -92,6 +92,31 @@ Cada rifa tiene su tablero (`/rifas/<id>`, botón **Ver números**), disponible 
 - Al abrir el tablero corre la liberación automática, así que en las rifas que la tienen activada nunca se ven vencidos.
 - En celular, mientras se eligen números aparece una barra con el total; el formulario se abre como hoja inferior.
 - Cada operación queda en el historial con el usuario que la hizo. Las acciones del servidor verifican que la rifa sea del organizador del usuario y solo tocan asignaciones de esa rifa.
+
+## Historial
+
+Cada rifa tiene su historial (botón **Historial** del tablero, o **Ver historial del 0042** desde el detalle de un número): apartados, ventas, pagos, cancelaciones (con su motivo) y liberaciones, con la fecha, el comprador y quién lo hizo ("Sistema" para la liberación automática). Se filtra por tipo de movimiento o por número y se pagina de 100 en 100, del más reciente al más antiguo.
+
+## Liberación programada
+
+Los apartados vencidos de las rifas con liberación automática se liberan:
+
+- **Al abrir el tablero** de cualquier rifa (siempre, sin configurar nada).
+- **Con un cron**, para que se liberen aunque nadie abra la app. Hay dos formas:
+  - `GET /api/cron/liberar-vencidos` con el encabezado `Authorization: Bearer <CRON_SECRET>`. Responde `{"liberados": N}`, o 401 sin el secreto correcto. Sirve con Vercel Cron (que manda ese encabezado solo cuando `CRON_SECRET` está configurado) o con cualquier servicio externo. En el plan gratuito de Vercel, Vercel Cron solo puede correr una vez al día; para algo más frecuente usa pg_cron o un servicio externo.
+  - **pg_cron** en Supabase, que llama directo a la función SQL (ver "Paso a la nube").
+
+La función es segura de correr varias veces a la vez: nunca libera dos veces ni libera un apartado que se pagó mientras tanto.
+
+Para probarla localmente:
+
+```bash
+curl -H "Authorization: Bearer $(grep ^CRON_SECRET= .env | cut -d= -f2-)" http://localhost:3000/api/cron/liberar-vencidos
+```
+
+## Fechas y zona horaria
+
+Las fechas se guardan en UTC y se muestran en la zona de `NEXT_PUBLIC_ZONA_HORARIA` (predeterminada: `America/Mexico_City`), tanto en el servidor como en el navegador. Así no cambia la hora aunque el servidor de la nube esté en UTC.
 
 ## Usuarios y acceso
 
@@ -149,7 +174,7 @@ Cubren la creación, configuración y eliminación de rifas, la validación del 
 - varias liberaciones automáticas a la vez
 - cambiar el rango de una rifa mientras alguien aparta
 
-También cubren la validación del formulario de apartado y que las operaciones del tablero no puedan tocar asignaciones de otra rifa.
+También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación) y el secreto del cron.
 
 ## Cambios en la base de datos
 
@@ -176,11 +201,15 @@ Toda la configuración va en variables de entorno, así que mover la base solo r
    ```
 
 5. Verifica con `GET /api/health` y entra con esa cuenta.
-6. Programa la liberación automática. En Supabase, con pg_cron (cada 10 minutos):
+6. Programa la liberación automática (cualquiera de estas opciones; ver "Liberación programada"):
+   - **pg_cron en Supabase** (cada 10 minutos, sin pasar por la app):
 
-   ```sql
-   select cron.schedule('liberar-apartados', '*/10 * * * *', $$select liberar_apartados_vencidos()$$);
-   ```
+     ```sql
+     select cron.schedule('liberar-apartados', '*/10 * * * *', $$select liberar_apartados_vencidos()$$);
+     ```
+
+   - **Un cron que llame al endpoint**: configura `CRON_SECRET` en la app y programa `GET /api/cron/liberar-vencidos` con `Authorization: Bearer <CRON_SECRET>`.
+7. Configura también `CRON_SECRET` (si usas el endpoint) y `NEXT_PUBLIC_ZONA_HORARIA` si el organizador no está en la hora del centro de México.
 
 **Seguridad en Supabase:** todas las tablas tienen RLS activado sin políticas y la vista usa `security_invoker`. La app se conecta directo a Postgres como dueña de las tablas, así que no le afecta; la API pública de Supabase (anon / authenticated) no puede leer ni escribir nada.
 
