@@ -28,6 +28,8 @@ export type ApartarNumeros = {
 type OperacionSobreAsignaciones = {
   asignacionIds: string[];
   usuarioId?: string | null;
+  /** Si se indica, solo se tocan asignaciones de esa rifa (las demás cuentan como no vigentes). */
+  rifaId?: string;
 };
 
 /**
@@ -113,7 +115,7 @@ export async function apartarNumeros(db: Db, datos: ApartarNumeros): Promise<Asi
 /** Confirma el pago de apartados (o ventas) pendientes. Todo o nada. */
 export async function confirmarPago(
   db: Db,
-  { asignacionIds, usuarioId }: OperacionSobreAsignaciones,
+  { asignacionIds, usuarioId, rifaId }: OperacionSobreAsignaciones,
 ): Promise<Asignacion[]> {
   const ids = idsUnicos(asignacionIds);
 
@@ -124,6 +126,7 @@ export async function confirmarPago(
       .where(
         and(
           inArray(asignaciones.id, ids),
+          rifaId ? eq(asignaciones.rifaId, rifaId) : undefined,
           inArray(asignaciones.estado, ["apartado", "vendido"]),
           eq(asignaciones.estadoPago, "pendiente"),
         ),
@@ -145,7 +148,7 @@ export async function confirmarPago(
 /** Libera apartados con pago pendiente para que el número vuelva a estar disponible. Todo o nada. */
 export async function liberarAsignaciones(
   db: Db,
-  { asignacionIds, usuarioId }: OperacionSobreAsignaciones,
+  { asignacionIds, usuarioId, rifaId }: OperacionSobreAsignaciones,
 ): Promise<Asignacion[]> {
   const ids = idsUnicos(asignacionIds);
 
@@ -156,6 +159,7 @@ export async function liberarAsignaciones(
       .where(
         and(
           inArray(asignaciones.id, ids),
+          rifaId ? eq(asignaciones.rifaId, rifaId) : undefined,
           eq(asignaciones.estado, "apartado"),
           eq(asignaciones.estadoPago, "pendiente"),
         ),
@@ -177,7 +181,12 @@ export async function liberarAsignaciones(
 /** Cancela apartados o ventas (por ejemplo, el comprador desistió o fue un error de captura). Todo o nada. */
 export async function cancelarAsignaciones(
   db: Db,
-  { asignacionIds, usuarioId, motivo }: OperacionSobreAsignaciones & { motivo?: string | null },
+  {
+    asignacionIds,
+    usuarioId,
+    rifaId,
+    motivo,
+  }: OperacionSobreAsignaciones & { motivo?: string | null },
 ): Promise<Asignacion[]> {
   const ids = idsUnicos(asignacionIds);
 
@@ -186,7 +195,11 @@ export async function cancelarAsignaciones(
       .update(asignaciones)
       .set({ estado: "cancelado", finalizadaEn: sql`now()` })
       .where(
-        and(inArray(asignaciones.id, ids), inArray(asignaciones.estado, ["apartado", "vendido"])),
+        and(
+          inArray(asignaciones.id, ids),
+          rifaId ? eq(asignaciones.rifaId, rifaId) : undefined,
+          inArray(asignaciones.estado, ["apartado", "vendido"]),
+        ),
       )
       .returning();
 

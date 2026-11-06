@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 
 import type { Db } from "@/db/client";
 import { numerosEstado, rifas } from "@/db/schema";
@@ -39,3 +39,31 @@ export async function obtenerRifa(db: Db, rifaId: string, organizadorId: string)
     .where(and(eq(rifas.id, rifaId), eq(rifas.organizadorId, organizadorId)));
   return rifa ?? null;
 }
+
+/**
+ * Números ocupados (apartados o vendidos) de una rifa con los datos de su asignación vigente.
+ * Los disponibles no se envían: el tablero los deduce del rango de la rifa.
+ */
+export async function listarOcupados(db: Db, rifaId: string) {
+  return db
+    .select({
+      numero: numerosEstado.numero,
+      asignacionId: numerosEstado.asignacionId,
+      estado: numerosEstado.estado,
+      vencido: numerosEstado.vencido,
+      estadoPago: numerosEstado.estadoPago,
+      compradorId: numerosEstado.compradorId,
+      compradorNombre: numerosEstado.compradorNombre,
+      compradorTelefono: numerosEstado.compradorTelefono,
+      monto: numerosEstado.monto,
+      fechaLimite: numerosEstado.fechaLimite,
+      fechaPago: numerosEstado.fechaPago,
+      asignadoEn: numerosEstado.asignadoEn,
+      observaciones: numerosEstado.observaciones,
+    })
+    .from(numerosEstado)
+    .where(and(eq(numerosEstado.rifaId, rifaId), ne(numerosEstado.estado, "disponible")))
+    .orderBy(numerosEstado.numero);
+}
+
+export type NumeroOcupado = Awaited<ReturnType<typeof listarOcupados>>[number];

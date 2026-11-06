@@ -8,6 +8,7 @@ import {
   confirmarPago,
   liberarAsignaciones,
 } from "@/server/asignaciones";
+import { listarOcupados } from "@/server/consultas";
 import {
   AsignacionesNoVigentesError,
   ErrorDeNegocio,
@@ -271,5 +272,42 @@ describe("reglas en la base", () => {
       monto: "50.00",
     });
     expect(await codigoDeError(cruzada)).toBe("23503"); // foreign_key_violation
+  });
+});
+
+describe("operaciones limitadas a una rifa", () => {
+  it("no toca asignaciones de otra rifa aunque se pase su id", async () => {
+    const rifaA = await crearRifaDePrueba(db);
+    const rifaB = await crearRifaDePrueba(db);
+    const [deB] = await apartarNumeros(db, { rifaId: rifaB.id, numeros: [1], comprador: { nombre: "Ana" } });
+
+    for (const operar of [confirmarPago, liberarAsignaciones, cancelarAsignaciones]) {
+      await expect(operar(db, { asignacionIds: [deB.id], rifaId: rifaA.id })).rejects.toThrow(
+        AsignacionesNoVigentesError,
+      );
+    }
+    expect((await estadoDe(rifaB.id, 1)).estado).toBe("apartado");
+  });
+});
+
+describe("listarOcupados", () => {
+  it("devuelve solo los números ocupados, con comprador y observaciones", async () => {
+    const rifa = await crearRifaDePrueba(db);
+    await apartarNumeros(db, {
+      rifaId: rifa.id,
+      numeros: [9, 4],
+      comprador: { nombre: "Ana", telefono: "55 0000 0001" },
+      observaciones: "Paga el viernes",
+    });
+    await apartarNumeros(db, { rifaId: rifa.id, numeros: [20], comprador: { nombre: "Beto" }, pagoConfirmado: true });
+
+    const ocupados = await listarOcupados(db, rifa.id);
+
+    expect(ocupados.map((o) => [o.numero, o.estado, o.compradorNombre])).toEqual([
+      [4, "apartado", "Ana"],
+      [9, "apartado", "Ana"],
+      [20, "vendido", "Beto"],
+    ]);
+    expect(ocupados[0]).toMatchObject({ observaciones: "Paga el viernes", compradorTelefono: "55 0000 0001" });
   });
 });

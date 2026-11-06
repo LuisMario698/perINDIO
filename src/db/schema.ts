@@ -313,7 +313,7 @@ export const movimientos = pgTable(
   (t) => [index().on(t.rifaId, t.creadoEn), index().on(t.numeroId), index().on(t.asignacionId)],
 ).enableRLS();
 
-// Vista definida en SQL (drizzle/0001_*.sql): cada número con su estado actual y,
+// Vista definida en SQL (drizzle/0001_*.sql y 0004_*.sql): cada número con su estado actual y,
 // si está ocupado, los datos de su asignación vigente y del comprador.
 export const numerosEstado = pgView("numeros_estado", {
   numeroId: uuid("numero_id").notNull(),
@@ -331,4 +331,5 @@ export const numerosEstado = pgView("numeros_estado", {
   fechaLimite: timestamp("fecha_limite", { withTimezone: true }),
   fechaPago: timestamp("fecha_pago", { withTimezone: true }),
   asignadoEn: timestamp("asignado_en", { withTimezone: true }),
+  observaciones: text("observaciones"),
 }).existing();

@@ -75,7 +75,11 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{rifa.nombre}</CardTitle>
+        <CardTitle>
+          <Link href={`/rifas/${rifa.id}`} className="hover:underline">
+            {rifa.nombre}
+          </Link>
+        </CardTitle>
         <CardDescription>
           {formatearEntero(rifa.cantidadNumeros)} números · {formatearDinero(rifa.precioNumero)}{" "}
           cada uno
@@ -102,16 +106,19 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
           {rifa.fechaSorteo && ` Sorteo: ${formatearFecha(rifa.fechaSorteo)}.`}
         </p>
       </CardContent>
-      {esAdmin && (
-        <CardFooter className="justify-end">
+      <CardFooter className="justify-end gap-2">
+        {esAdmin && (
           <Link
             href={`/rifas/${rifa.id}/configuracion`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             Configurar
           </Link>
-        </CardFooter>
-      )}
+        )}
+        <Link href={`/rifas/${rifa.id}`} className={buttonVariants({ size: "sm" })}>
+          Ver números
+        </Link>
+      </CardFooter>
     </Card>
   );
 }

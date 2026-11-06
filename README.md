@@ -60,7 +60,7 @@ drizzle/             Migraciones SQL versionadas
 scripts/             Seed y creación de usuarios
 src/proxy.ts         Manda al login a quien no tiene sesión
 src/app/login/       Pantalla de login
-src/app/(panel)/     Páginas protegidas (requieren sesión): lista de rifas, nueva rifa, configuración
+src/app/(panel)/     Páginas protegidas (requieren sesión): lista de rifas, tablero, nueva rifa, configuración
 src/components/ui/   Componentes de shadcn/ui
 src/db/              Esquema, cliente y utilidades de base de datos
 src/lib/             Utilidades compartidas (formatos, rutas, validación, cliente de auth)
@@ -80,6 +80,18 @@ Solo un administrador puede crear, configurar o eliminar rifas (botones **Nueva 
 - **Eliminar:** solo si la rifa nunca tuvo asignaciones, con confirmación. Si ya tuvo, se puede cerrar.
 - Si alguien cambia el rango mientras otra persona aparta, Postgres los pone en fila (la rifa se bloquea durante el cambio): o el apartado entra primero y el cambio de rango se rechaza, o el rango cambia primero y el apartado se valida contra el rango nuevo.
 - La validación del formulario está en `src/lib/validacion/rifa.ts` (zod, mensajes en español) y las operaciones en `src/server/rifas.ts`.
+
+## Tablero de números
+
+Cada rifa tiene su tablero (`/rifas/<id>`, botón **Ver números**), disponible para admin y operador:
+
+- **Cuadrícula** con todos los números por color: disponible, apartado, vencido (apartado con el plazo vencido) y vendido.
+- **Filtros** por estado, más "Pago pendiente" (apartados y vencidos), con el conteo de cada uno. **Búsqueda** por número ("195" encuentra 0195, 1195, 1950…) o por nombre del comprador, sin importar acentos ni mayúsculas.
+- **Apartar o vender:** se tocan uno o varios números disponibles y se captura el comprador (nuevo, o uno que ya tiene números en la rifa), el plazo para pagar y observaciones. Con "Ya pagó" se registra como venta. Si mientras tanto otra persona tomó alguno, no se aparta ninguno y se avisa cuál.
+- **Detalle de un número ocupado:** comprador, teléfono, precio, fechas y vencimiento. Desde ahí se confirma el pago, se libera (solo apartados sin pagar) o se cancela con un motivo. Si el comprador tiene varios números, se puede confirmar el pago de todos sus apartados o liberar todos sus vencidos de una vez.
+- Al abrir el tablero corre la liberación automática, así que en las rifas que la tienen activada nunca se ven vencidos.
+- En celular, mientras se eligen números aparece una barra con el total; el formulario se abre como hoja inferior.
+- Cada operación queda en el historial con el usuario que la hizo. Las acciones del servidor verifican que la rifa sea del organizador del usuario y solo tocan asignaciones de esa rifa.
 
 ## Usuarios y acceso
 
@@ -136,6 +148,8 @@ Cubren la creación, configuración y eliminación de rifas, la validación del 
 - confirmar un pago mientras corre la liberación automática
 - varias liberaciones automáticas a la vez
 - cambiar el rango de una rifa mientras alguien aparta
+
+También cubren la validación del formulario de apartado y que las operaciones del tablero no puedan tocar asignaciones de otra rifa.
 
 ## Cambios en la base de datos
 

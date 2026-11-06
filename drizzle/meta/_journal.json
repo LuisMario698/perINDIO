@@ -29,6 +29,13 @@
       "when": 1793044725215,
       "tag": "0003_fecha_sorteo_como_fecha",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794005169758,
+      "tag": "0004_observaciones_en_vista",
+      "breakpoints": true
     }
   ]
 }
