@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { Logo } from "@/components/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { obtenerUsuarioActual } from "@/server/sesion";
@@ -12,7 +13,8 @@ export default function LayoutPanel({ children }: LayoutProps<"/">) {
     <div className="flex flex-1 flex-col">
       <header className="border-b">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4">
-          <Link href="/" className="font-semibold tracking-tight">
+          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+            <Logo className="size-6" />
             perINDIO
           </Link>
           <Suspense fallback={null}>

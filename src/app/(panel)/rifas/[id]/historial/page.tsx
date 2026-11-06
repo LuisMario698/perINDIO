@@ -134,7 +134,38 @@ async function Historial({ params, searchParams }: PageProps<"/rifas/[id]/histor
           {filtrando ? "Ningún movimiento coincide con el filtro." : "Todavía no hay movimientos."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <>
+          {/* En celular, una tarjeta por movimiento; desde tableta, tabla. */}
+          <ul className="divide-y rounded-xl border md:hidden">
+            {movimientos.map((m) => (
+              <li key={m.id} className="space-y-1 p-3 text-sm">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <Link
+                      href={conFiltros({ numero: m.numero })}
+                      className="font-mono font-semibold tabular-nums hover:underline"
+                    >
+                      {formatearNumero(m.numero, rifa.digitos)}
+                    </Link>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={cn("size-2 rounded-full", PUNTO[m.tipo])} />
+                      {NOMBRE_MOVIMIENTO[m.tipo]}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatearFechaHora(m.creadoEn)}
+                  </span>
+                </div>
+                <p>{m.comprador}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[describirMovimiento(m.tipo, m.detalle), m.usuario ?? "Sistema"]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        <div className="hidden overflow-x-auto rounded-xl border md:block">
           <table className="w-full min-w-[44rem] text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
@@ -177,6 +208,7 @@ async function Historial({ params, searchParams }: PageProps<"/rifas/[id]/histor
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <div className="flex justify-between gap-2">

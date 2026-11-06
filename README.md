@@ -21,6 +21,13 @@ pnpm test         # corre las pruebas (usan su propia base, perindio_test)
 pnpm dev          # http://localhost:3000
 ```
 
+Para presentar el proyecto hay un guion paso a paso en [docs/guion-demo.md](docs/guion-demo.md) y un comando que deja todo listo en modo producción:
+
+```bash
+pnpm demo        # Postgres + migraciones + datos de demostración + build + servidor en :3000
+pnpm demo:datos  # vuelve a dejar los datos de demostración (para ensayar)
+```
+
 Entra con el administrador que crea el seed (`SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`). Para ver la app como operador, usa `SEED_OPERADOR_EMAIL` y `SEED_OPERADOR_PASSWORD`.
 
 La página de inicio muestra si la app llega a la base de datos; `GET /api/health` responde lo mismo en JSON.
@@ -39,6 +46,7 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 | `pnpm db:migrate` | Aplica las migraciones pendientes en `DATABASE_URL` |
 | `pnpm db:seed` | **Reemplaza** los datos con los de demostración; solo corre contra una base local |
 | `pnpm db:studio` | Abre Drizzle Studio para ver los datos |
+| `pnpm demo` / `pnpm demo:datos` | Prepara y arranca la demo en modo producción / reinicia los datos demo |
 | `pnpm usuario:crear` | Crea una cuenta (no hay registro público); `--ayuda` muestra las opciones |
 
 `db:migrate` imprime un par de avisos (`NOTICE ... already exists, skipping`) de la tabla interna de Drizzle; son normales.
@@ -55,6 +63,7 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 
 ```
 docker-compose.yml   Postgres local
+docs/                Guion de la demo
 drizzle.config.ts    Configuración de drizzle-kit
 drizzle/             Migraciones SQL versionadas
 scripts/             Seed y creación de usuarios
@@ -220,6 +229,7 @@ Toda la configuración va en variables de entorno, así que mover la base solo r
    - `DATABASE_URL`: la cadena del paso 1
    - `BETTER_AUTH_SECRET`: uno nuevo, distinto al de desarrollo (`openssl rand -base64 32`)
    - `BETTER_AUTH_URL`: la URL pública de la app (por ejemplo `https://rifas.ejemplo.com`)
+   - `BETTER_AUTH_TRUSTED_ORIGINS` (opcional): otras direcciones desde las que se puede entrar, separadas por comas (por ejemplo, el dominio de pruebas)
 4. Crea el primer administrador contra la base de la nube:
 
    ```bash

@@ -26,6 +26,12 @@ const roles = {
 export function crearAuth(db: Db) {
   return betterAuth({
     appName: "perINDIO",
+    // Otras direcciones desde las que se permite entrar además de BETTER_AUTH_URL, separadas
+    // por comas (por ejemplo, la IP de la computadora para probar desde un celular).
+    trustedOrigins: (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+      .split(",")
+      .map((origen) => origen.trim())
+      .filter(Boolean),
     database: drizzleAdapter(db, {
       provider: "pg",
       schema: {

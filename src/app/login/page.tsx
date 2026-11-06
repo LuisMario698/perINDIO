@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { Logo } from "@/components/logo";
 import {
   Card,
   CardContent,
@@ -20,7 +21,10 @@ export default function PaginaLogin({ searchParams }: PageProps<"/login">) {
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">perINDIO</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Logo className="size-7" />
+            perINDIO
+          </CardTitle>
           <CardDescription>Entra con la cuenta que te dio el administrador.</CardDescription>
         </CardHeader>
         <CardContent>
