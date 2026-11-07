@@ -13,7 +13,12 @@ export function PestanasRifa({ rifaId, esAdmin }: { rifaId: string; esAdmin: boo
     { href: `${base}/pedidos`, nombre: "Pedidos" },
     { href: `${base}/vendedores`, nombre: "Vendedores" },
     { href: `${base}/historial`, nombre: "Historial" },
-    ...(esAdmin ? [{ href: `${base}/configuracion`, nombre: "Configurar" }] : []),
+    ...(esAdmin
+      ? [
+          { href: `${base}/sorteo`, nombre: "Sorteo" },
+          { href: `${base}/configuracion`, nombre: "Configurar" },
+        ]
+      : []),
   ];
   return (
     <nav aria-label="Secciones de la rifa" className="-mx-4 overflow-x-auto px-4">

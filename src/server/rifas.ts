@@ -160,7 +160,7 @@ export async function tieneAsignaciones(db: Db | Tx, rifaId: string) {
 
 // FOR UPDATE espera a los apartados en curso (que leen la rifa con FOR SHARE) y detiene
 // los nuevos hasta terminar, así el rango no cambia a la mitad de un apartado.
-async function bloquearRifa(tx: Tx, rifaId: string, organizadorId: string) {
+export async function bloquearRifa(tx: Tx, rifaId: string, organizadorId: string) {
   const [rifa] = await tx
     .select()
     .from(rifas)

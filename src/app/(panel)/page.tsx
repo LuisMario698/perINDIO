@@ -173,7 +173,7 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
         </CardDescription>
         <CardAction>
           <Badge variant={rifa.estado === "activa" ? "default" : "outline"}>
-            {rifa.estado === "activa" ? "Activa" : "Cerrada"}
+            {rifa.estado === "activa" ? "Activa" : rifa.estado === "cerrada" ? "Ventas cerradas" : "Sorteada"}
           </Badge>
         </CardAction>
       </CardHeader>
