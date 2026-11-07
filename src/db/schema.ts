@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   foreignKey,
   index,
@@ -24,7 +25,12 @@ import {
 // de las tablas (no le afecta), pero si la base se aloja en Supabase, su API pública
 // (anon / authenticated) no puede leer ni escribir nada.
 
-export const estadoRifa = pgEnum("estado_rifa", ["activa", "cerrada"]);
+// activa: se aparta y se vende · cerrada: ventas cerradas (se puede reabrir) ·
+// sorteada: ya tiene resultado; es definitiva y de solo lectura.
+export const estadoRifa = pgEnum("estado_rifa", ["activa", "cerrada", "sorteada"]);
+
+// De dónde vino un pedido: de la página pública o capturado por un usuario del panel.
+export const origenPedido = pgEnum("origen_pedido", ["publico", "interno"]);
 
 // "apartado" y "vendido" son vigentes: ocupan el número. "liberado" y "cancelado" lo devuelven.
 export const estadoAsignacion = pgEnum("estado_asignacion", [
@@ -43,7 +49,12 @@ export const tipoMovimiento = pgEnum("tipo_movimiento", [
   "cancelacion",
   "liberacion_manual",
   "liberacion_automatica",
+  // El comprador canceló su propio apartado desde el enlace de su pedido.
+  "cancelacion_comprador",
 ]);
+
+// Imágenes pequeñas (el logo) guardadas en la base: no depende de un servicio de archivos.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
 const creadoEn = () => timestamp({ withTimezone: true }).notNull().defaultNow();
 const actualizadoEn = () =>
@@ -53,9 +64,16 @@ const actualizadoEn = () =>
     .$onUpdate(() => sql`now()`);
 
 // Dueño de las rifas. Hoy hay uno; existe para soportar varios organizadores después.
+// Su nombre, WhatsApp, datos de pago y logo se muestran en la página pública y en los PDF.
 export const organizadores = pgTable("organizadores", {
   id: uuid().primaryKey().defaultRandom(),
   nombre: text().notNull(),
+  // Solo dígitos con lada de país (52...), listo para enlaces wa.me.
+  whatsapp: text(),
+  // Instrucciones de pago para los compradores (banco, CLABE, titular, efectivo...).
+  datosPago: text(),
+  logo: bytea(),
+  logoTipo: text(),
   creadoEn: creadoEn(),
 }).enableRLS();
 
@@ -175,11 +193,29 @@ export const rifas = pgTable(
     // Solo el día ("2026-12-20"): sin hora, así no depende de la zona horaria del servidor.
     fechaSorteo: date({ mode: "string" }),
     estado: estadoRifa().notNull().default("activa"),
+    // Página pública /r/<slug>: visible si publica; acepta apartados si además está activa.
+    publica: boolean().notNull().default(false),
+    slug: text().notNull().unique(),
+    // Los apartados de la página pública tienen su propio plazo (más corto) y un máximo de números.
+    plazoPublicoHoras: integer().notNull().default(24),
+    maxNumerosPublico: integer().notNull().default(10),
+    // Si se llena, reemplaza los datos de pago del organizador para esta rifa.
+    instruccionesPago: text(),
+    sorteadaEn: timestamp({ withTimezone: true }),
     creadoEn: creadoEn(),
     actualizadoEn: actualizadoEn(),
   },
   (t) => [
     index().on(t.organizadorId),
+    check("rifas_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+    check("rifas_plazo_publico", sql`${t.plazoPublicoHoras} > 0`),
+    check("rifas_max_numeros_publico", sql`${t.maxNumerosPublico} between 1 and 100`),
+    // Se compara como texto: un valor nuevo de un enum no se puede usar en la misma
+    // transacción que lo agrega (la migración hace ambas cosas).
+    check(
+      "rifas_sorteada_con_fecha",
+      sql`(${t.estado}::text = 'sorteada') = (${t.sorteadaEn} is not null)`,
+    ),
     check("rifas_cantidad_numeros", sql`${t.cantidadNumeros} between 1 and 100000`),
     check("rifas_numero_inicial", sql`${t.numeroInicial} >= 0`),
     check("rifas_digitos", sql`${t.digitos} between 1 and 6`),
@@ -220,10 +256,46 @@ export const compradores = pgTable(
       .references(() => organizadores.id),
     nombre: text().notNull(),
     telefono: text(),
+    // Solo dígitos: sirve para reconocer al mismo comprador aunque escriba el teléfono distinto.
+    telefonoNormalizado: text(),
     notas: text(),
     creadoEn: creadoEn(),
   },
-  (t) => [index().on(t.organizadorId), check("compradores_nombre", sql`btrim(${t.nombre}) <> ''`)],
+  (t) => [
+    index().on(t.organizadorId, t.telefonoNormalizado),
+    check("compradores_nombre", sql`btrim(${t.nombre}) <> ''`),
+  ],
+).enableRLS();
+
+// Una solicitud de uno o varios números de un comprador. El comprador la consulta con su
+// enlace secreto (/p/<token>) y la identifica por su folio (por ejemplo "K7M4QX").
+export const pedidos = pgTable(
+  "pedidos",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    rifaId: uuid()
+      .notNull()
+      .references(() => rifas.id, { onDelete: "cascade" }),
+    compradorId: uuid()
+      .notNull()
+      .references(() => compradores.id),
+    folio: text().notNull(),
+    token: text().notNull().unique(),
+    origen: origenPedido().notNull(),
+    // Usuario que lo capturó; null si llegó por la página pública.
+    vendedorId: text().references(() => usuarios.id),
+    creadoEn: creadoEn(),
+  },
+  (t) => [
+    unique("pedidos_rifa_folio").on(t.rifaId, t.folio),
+    index().on(t.rifaId, t.creadoEn),
+    index().on(t.compradorId),
+    index().on(t.vendedorId),
+    check(
+      "pedidos_vendedor_segun_origen",
+      sql`(${t.origen} = 'publico') = (${t.vendedorId} is null)`,
+    ),
+  ],
 ).enableRLS();
 
 // Cada vez que un número se aparta o se vende se crea una asignación. Al liberarla o
@@ -236,6 +308,9 @@ export const asignaciones = pgTable(
       .notNull()
       .references(() => rifas.id, { onDelete: "cascade" }),
     numeroId: uuid().notNull(),
+    pedidoId: uuid()
+      .notNull()
+      .references(() => pedidos.id, { onDelete: "cascade" }),
     compradorId: uuid()
       .notNull()
       .references(() => compradores.id),
@@ -262,6 +337,7 @@ export const asignaciones = pgTable(
       .where(sql`estado in ('apartado', 'vendido')`),
     index().on(t.rifaId, t.estado),
     index().on(t.compradorId),
+    index().on(t.pedidoId),
     // Para encontrar rápido los apartados vencidos.
     index("asignaciones_apartados_pendientes")
       .on(t.fechaLimite)
@@ -290,6 +366,38 @@ export const asignaciones = pgTable(
   ],
 ).enableRLS();
 
+// Premios de la rifa y, cuando se registra el resultado, el número ganador de cada uno.
+export const premios = pgTable(
+  "premios",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    rifaId: uuid()
+      .notNull()
+      .references(() => rifas.id, { onDelete: "cascade" }),
+    lugar: smallint().notNull(),
+    descripcion: text().notNull(),
+    numeroGanador: integer(),
+    // Asignación vigente del número ganador al registrar el resultado (null si estaba libre).
+    asignacionGanadoraId: uuid().references(() => asignaciones.id),
+  },
+  (t) => [
+    unique("premios_rifa_lugar").on(t.rifaId, t.lugar),
+    check("premios_lugar", sql`${t.lugar} >= 1`),
+    check("premios_descripcion", sql`btrim(${t.descripcion}) <> ''`),
+  ],
+).enableRLS();
+
+// Registro de apartados desde la página pública, para limitar cuántos hace cada IP o teléfono.
+export const intentosPublicos = pgTable(
+  "intentos_publicos",
+  {
+    id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    clave: text().notNull(),
+    creadoEn: creadoEn(),
+  },
+  (t) => [index().on(t.clave, t.creadoEn)],
+).enableRLS();
+
 // Historial de operaciones. Solo se agregan filas.
 export const movimientos = pgTable(
   "movimientos",
@@ -313,8 +421,8 @@ export const movimientos = pgTable(
   (t) => [index().on(t.rifaId, t.creadoEn), index().on(t.numeroId), index().on(t.asignacionId)],
 ).enableRLS();
 
-// Vista definida en SQL (drizzle/0001_*.sql y 0004_*.sql): cada número con su estado actual y,
-// si está ocupado, los datos de su asignación vigente y del comprador.
+// Vista definida en SQL (drizzle/0001_*.sql, 0004_*.sql y 0006_*.sql): cada número con su estado
+// actual y, si está ocupado, los datos de su asignación vigente, su pedido y el comprador.
 export const numerosEstado = pgView("numeros_estado", {
   numeroId: uuid("numero_id").notNull(),
   rifaId: uuid("rifa_id").notNull(),
@@ -332,4 +440,6 @@ export const numerosEstado = pgView("numeros_estado", {
   fechaPago: timestamp("fecha_pago", { withTimezone: true }),
   asignadoEn: timestamp("asignado_en", { withTimezone: true }),
   observaciones: text("observaciones"),
+  pedidoId: uuid("pedido_id"),
+  folio: text("folio"),
 }).existing();

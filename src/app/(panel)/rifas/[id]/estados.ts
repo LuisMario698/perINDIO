@@ -15,7 +15,7 @@ export type RifaTablero = {
   digitos: number;
   precioNumero: string;
   plazoApartadoHoras: number;
-  estado: "activa" | "cerrada";
+  estado: "activa" | "cerrada" | "sorteada";
 };
 
 type Accion = (estado: EstadoTablero, formData: FormData) => Promise<EstadoTablero>;

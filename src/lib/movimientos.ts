@@ -6,7 +6,8 @@ type Tipo =
   | "pago_confirmado"
   | "cancelacion"
   | "liberacion_manual"
-  | "liberacion_automatica";
+  | "liberacion_automatica"
+  | "cancelacion_comprador";
 
 export const NOMBRE_MOVIMIENTO: Record<Tipo, string> = {
   apartado: "Apartado",
@@ -15,6 +16,7 @@ export const NOMBRE_MOVIMIENTO: Record<Tipo, string> = {
   cancelacion: "Cancelación",
   liberacion_manual: "Liberación manual",
   liberacion_automatica: "Liberación automática",
+  cancelacion_comprador: "Cancelado por el comprador",
 };
 
 export const TIPOS_MOVIMIENTO = Object.keys(NOMBRE_MOVIMIENTO) as Tipo[];
@@ -40,6 +42,8 @@ export function describirMovimiento(tipo: Tipo, detalle: Record<string, unknown>
       ]
         .filter(Boolean)
         .join(" · ");
+    case "cancelacion_comprador":
+      return d.folio ? `Folio ${d.folio}` : "";
     case "liberacion_manual":
     case "liberacion_automatica":
       return fechaLimite ? `venció ${formatearFechaHora(fechaLimite)}` : "";

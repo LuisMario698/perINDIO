@@ -232,6 +232,7 @@ describe("reglas en la base", () => {
     const duplicada = db.insert(asignaciones).values({
       rifaId: rifa.id,
       numeroId: a.numeroId,
+      pedidoId: a.pedidoId,
       compradorId: a.compradorId,
       estado: "vendido",
       estadoPago: "pendiente",
@@ -266,6 +267,7 @@ describe("reglas en la base", () => {
     const cruzada = db.insert(asignaciones).values({
       rifaId: rifaB.id,
       numeroId: libreDeA.id,
+      pedidoId: a.pedidoId,
       compradorId: a.compradorId,
       estado: "vendido",
       estadoPago: "pendiente",

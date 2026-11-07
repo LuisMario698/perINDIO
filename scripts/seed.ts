@@ -3,7 +3,7 @@ import { inArray, sql } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db/client";
 import { esBaseLocal } from "@/db/local";
-import { asignaciones, compradores, movimientos, organizadores } from "@/db/schema";
+import { asignaciones, compradores, movimientos, organizadores, pedidos } from "@/db/schema";
 import {
   apartarNumeros,
   confirmarPago,
@@ -48,8 +48,9 @@ async function main() {
   try {
     console.log(`Sembrando ${host} (se reemplazan todos los datos)…`);
     await db.execute(
-      sql`truncate movimientos, asignaciones, numeros, compradores, rifas, sesiones, cuentas,
-          verificaciones, limites_de_solicitudes, usuarios, organizadores restart identity cascade`,
+      sql`truncate movimientos, premios, asignaciones, pedidos, numeros, compradores, rifas,
+          intentos_publicos, sesiones, cuentas, verificaciones, limites_de_solicitudes, usuarios,
+          organizadores restart identity cascade`,
     );
 
     const azar = generadorConSemilla(20261026);
@@ -89,6 +90,8 @@ async function main() {
     const principal = await crearRifa(db, {
       organizadorId: organizador.id,
       nombre: "Rifa Pro Fondos 2026",
+      slug: "pro-fondos-2026",
+      publica: true,
       descripcion: "Rifa de demostración con 2,000 números.",
       cantidadNumeros: 2000,
       precioNumero: "100.00",
@@ -106,6 +109,8 @@ async function main() {
     const express = await crearRifa(db, {
       organizadorId: organizador.id,
       nombre: "Rifa Express",
+      slug: "rifa-express",
+      publica: true,
       descripcion: "Rifa corta con liberación automática de apartados vencidos.",
       cantidadNumeros: 100,
       precioNumero: "50.00",
@@ -224,6 +229,12 @@ async function envejecer(db: Db, lista: Asignacion[], minutos: number, minutosHa
       creadoEn: sql`${movimientos.creadoEn} - case when ${movimientos.tipo} = 'pago_confirmado' then ${atrasPago} else ${atras} end`,
     })
     .where(inArray(movimientos.asignacionId, ids));
+
+  // El pedido tiene la fecha de su primer apartado.
+  await db
+    .update(pedidos)
+    .set({ creadoEn: sql`${pedidos.creadoEn} - ${atras}` })
+    .where(inArray(pedidos.id, [...new Set(lista.map((a) => a.pedidoId))]));
 
   // El historial guarda la fecha límite con la que se apartó; se recorre igual que la del apartado.
   await db.execute(sql`

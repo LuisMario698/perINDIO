@@ -31,6 +31,16 @@ async function Configuracion({ params }: Pick<PageProps<"/rifas/[id]/configuraci
 
   const rifa = await obtenerRifa(db, id, usuario.organizadorId);
   if (!rifa) notFound();
+  if (rifa.estado === "sorteada") {
+    return (
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold tracking-tight">Configurar rifa</h1>
+        <p className="text-sm text-muted-foreground">
+          {rifa.nombre} ya fue sorteada; su configuración queda fija.
+        </p>
+      </div>
+    );
+  }
   const conAsignaciones = await tieneAsignaciones(db, rifa.id);
 
   return (

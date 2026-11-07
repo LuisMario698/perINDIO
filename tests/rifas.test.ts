@@ -40,7 +40,7 @@ async function configuracion(rifaId: string, cambios: Partial<ConfiguracionRifa>
     plazoApartadoHoras: r.plazoApartadoHoras,
     liberacionAutomatica: r.liberacionAutomatica,
     fechaSorteo: r.fechaSorteo,
-    estado: r.estado,
+    estado: r.estado === "cerrada" ? "cerrada" : "activa",
     ...cambios,
   } satisfies ConfiguracionRifa;
 }

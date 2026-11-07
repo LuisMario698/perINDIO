@@ -128,10 +128,15 @@ export function Tablero({ rifa, ocupados, acciones }: Props) {
 
   return (
     <div className="space-y-4 pb-24 lg:pb-0">
-      {!activa && (
+      {rifa.estado === "cerrada" && (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-          Esta rifa está cerrada: puedes consultar los números y registrar pagos, pero ya no apartar
-          ni vender.
+          Las ventas de esta rifa están cerradas: puedes consultar los números y registrar pagos,
+          pero ya no apartar ni vender.
+        </p>
+      )}
+      {rifa.estado === "sorteada" && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+          Esta rifa ya fue sorteada: los números quedan como estaban y solo se pueden consultar.
         </p>
       )}
       {aviso?.tipo === "exito" && (

@@ -26,6 +26,7 @@ const PUNTO: Record<TipoMovimiento, string> = {
   cancelacion: "bg-zinc-400",
   liberacion_manual: "bg-red-500",
   liberacion_automatica: "bg-red-500",
+  cancelacion_comprador: "bg-zinc-400",
 };
 
 // Los filtros vienen de la URL: lo que no se entienda se ignora en vez de fallar.

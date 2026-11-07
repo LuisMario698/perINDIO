@@ -31,8 +31,9 @@ export function conectarBaseDePruebas(): Db {
 
 export async function vaciarTablas(db: Db) {
   await db.execute(
-    sql`truncate movimientos, asignaciones, numeros, compradores, rifas, sesiones, cuentas,
-        verificaciones, limites_de_solicitudes, usuarios, organizadores restart identity cascade`,
+    sql`truncate movimientos, premios, asignaciones, pedidos, numeros, compradores, rifas,
+        intentos_publicos, sesiones, cuentas, verificaciones, limites_de_solicitudes, usuarios,
+        organizadores restart identity cascade`,
   );
 }
 

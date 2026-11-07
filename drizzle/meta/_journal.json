@@ -36,6 +36,20 @@
       "when": 1794005169758,
       "tag": "0004_observaciones_en_vista",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794010108624,
+      "tag": "0005_pedidos_y_flujo_publico",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794010119157,
+      "tag": "0006_vista_pedidos_y_rifa_sorteada",
+      "breakpoints": true
     }
   ]
 }
