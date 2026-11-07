@@ -1,6 +1,8 @@
 # perINDIO
 
-Sistema web para administrar rifas: números disponibles, apartados y vendidos, seguimiento de pagos, liberación de apartados vencidos y listas en PDF.
+Sistema web para administrar rifas: página pública donde el comprador aparta sin cuenta, pedidos con folio y comprobante por WhatsApp, seguimiento de pagos, liberación de apartados vencidos, ventas por vendedor, sorteo con resultados publicados y listas en PDF.
+
+Los actores, la matriz de permisos, los estados y cada flujo de principio a fin están en [docs/flujos.md](docs/flujos.md).
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Drizzle ORM · PostgreSQL 17 · jsPDF · Vitest.
 
@@ -28,7 +30,7 @@ pnpm demo        # Postgres + migraciones + datos de demostración + build + ser
 pnpm demo:datos  # vuelve a dejar los datos de demostración (para ensayar)
 ```
 
-Entra con el administrador que crea el seed (`SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`). Para ver la app como operador, usa `SEED_OPERADOR_EMAIL` y `SEED_OPERADOR_PASSWORD`.
+Entra con el administrador que crea el seed (`SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` de tu `.env`). Para ver la app como operador, usa `SEED_OPERADOR_EMAIL` (o `karla@perindio.test`) con `SEED_OPERADOR_PASSWORD`. Las páginas públicas no piden cuenta: `/r/pro-fondos-2026`, `/r/rifa-express` y `/r/navidena-2025`.
 
 La página de inicio muestra si la app llega a la base de datos; `GET /api/health` responde lo mismo en JSON.
 
@@ -55,25 +57,33 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 
 `pnpm db:seed` crea siempre los mismos datos:
 
-- **Rifa Pro Fondos 2026**: 2,000 números (0000–1999) a $100, plazo de 48 h, liberación manual. Tiene ventas, apartados vigentes, 18 apartados vencidos esperando que el organizador los libere y algunas liberaciones en el historial.
-- **Rifa Express**: 100 números (00–99) a $50, plazo de 24 h, liberación automática, con 5 apartados vencidos que se liberan en cuanto corre la liberación automática.
-- Dos cuentas: un administrador y un operador.
+- **Organizador demo** con WhatsApp y datos de pago ficticios.
+- **Rifa Pro Fondos 2026**: 2,000 números (0000–1999) a $100, plazo de 48 h, liberación manual y 3 premios. Tiene ventas, apartados vigentes, 18 apartados vencidos esperando que el organizador los libere y algunas liberaciones en el historial.
+- **Rifa Express**: 100 números (00–99) a $50, plazo de 24 h, liberación automática y 2 premios, con 5 apartados vencidos que se liberan en cuanto corre la liberación automática.
+- **Rifa Navideña 2025**: ya sorteada, con sus ganadores publicados.
+- Pedidos levantados por tres personas (admin y dos operadores) y otros hechos desde la página pública, para el reporte de ventas por vendedor.
+- Tres cuentas: un administrador y dos operadores.
 
 ## Estructura
 
 ```
 docker-compose.yml   Postgres local
-docs/                Guion de la demo
+docs/                Flujos del sistema y guion de la demo
 drizzle.config.ts    Configuración de drizzle-kit
 drizzle/             Migraciones SQL versionadas
 scripts/             Seed y creación de usuarios
 src/proxy.ts         Manda al login a quien no tiene sesión
 src/app/login/       Pantalla de login
-src/app/(panel)/     Páginas protegidas (requieren sesión): lista de rifas, tablero, nueva rifa, configuración
+src/app/r/[slug]/    Página pública de una rifa (sin sesión): números libres y apartar
+src/app/p/[token]/   Pedido del comprador (sin sesión, enlace secreto)
+src/app/logo/[id]/   Logo del organizador guardado en la base
+src/app/(panel)/     Páginas protegidas: rifas, tablero, pedidos, vendedores, historial, sorteo,
+                     configuración, usuarios, organizador y Mi cuenta
 src/components/ui/   Componentes de shadcn/ui
 src/db/              Esquema, cliente y utilidades de base de datos
 src/lib/             Utilidades compartidas (formatos, rutas, validación, cliente de auth)
-src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asignaciones, consultas
+src/server/          Lógica del servidor: auth, sesión, usuarios, rifas, asignaciones, pedidos,
+                     página pública, sorteo, reportes, organizador y consultas
 tests/               Pruebas de reglas, liberación, concurrencia, autenticación, validación e historial
 ```
 
@@ -98,7 +108,8 @@ Solo un administrador puede crear, configurar o eliminar rifas (botones **Nueva 
 - **Configurar:** todo se puede cambiar, con dos límites:
   - El **rango y los dígitos** solo se pueden cambiar mientras la rifa no tenga ninguna asignación (ni siquiera liberada o cancelada), porque regenerar los números borraría ese historial. Después se muestran pero no se pueden editar.
   - El **precio** nuevo solo aplica a los apartados que se hagan después; cada apartado guarda el precio con el que se hizo.
-- **Cerrar:** en la configuración, el estado "Cerrada" impide nuevos apartados y ventas.
+- **Página pública:** publicarla o no, su enlace (`/r/<enlace>`), el plazo para pagar lo que se aparta en línea, el máximo de números sin pagar por comprador y, si se quiere, instrucciones de pago propias (si no, se usan las del organizador).
+- **Cerrar:** el estado "Cerrada" (en la configuración o en la pestaña Sorteo) impide nuevos apartados y ventas. Una rifa **sorteada** queda en solo lectura.
 - **Eliminar:** solo si la rifa nunca tuvo asignaciones, con confirmación. Si ya tuvo, se puede cerrar.
 - Si alguien cambia el rango mientras otra persona aparta, Postgres los pone en fila (la rifa se bloquea durante el cambio): o el apartado entra primero y el cambio de rango se rechaza, o el rango cambia primero y el apartado se valida contra el rango nuevo.
 - La validación del formulario está en `src/lib/validacion/rifa.ts` (zod, mensajes en español) y las operaciones en `src/server/rifas.ts`.
@@ -115,6 +126,32 @@ Cada rifa tiene su tablero (`/rifas/<id>`, botón **Ver números**), disponible 
 - En celular, mientras se eligen números aparece una barra con el total; el formulario se abre como hoja inferior.
 - Cada operación queda en el historial con el usuario que la hizo. Las acciones del servidor verifican que la rifa sea del organizador del usuario y solo tocan asignaciones de esa rifa.
 
+## Página pública y pedidos
+
+- **`/r/<enlace>`** (sin cuenta): logo y nombre del organizador, precio, fecha del sorteo, premios y la cuadrícula de números libres u ocupados, **sin datos de compradores**. El comprador elige números y aparta con su nombre y WhatsApp. Después del sorteo, muestra los resultados con el nombre del ganador abreviado.
+- **Límites** (sin verificación por SMS): máximo de números sin pagar por teléfono (el mismo teléfono escrito distinto cuenta igual), 5 pedidos por hora por conexión y un campo trampa contra bots. Todo o nada: si un número se ocupó un instante antes, no se aparta ninguno.
+- **Pedido:** cada apartado (público o en el panel) crea un pedido con **folio** de 6 caracteres y un **enlace secreto** `/p/<token>` para el comprador: números, total, plazo, datos de pago, botón **Enviar comprobante por WhatsApp** (mensaje con folio, números y total) y **Cancelar mi apartado** mientras no esté pagado.
+- **Pestaña Pedidos** del panel: busca por folio, nombre o teléfono; filtra por por cobrar, vencidos, pagados o de la página pública; confirma el pago de todo el pedido, libera lo no pagado, manda un **recordatorio por WhatsApp** o copia el enlace del pedido.
+- **Compartir la rifa:** el tablero muestra el enlace público con botón para copiarlo y su código QR, que también se imprime en el PDF de números disponibles.
+
+## Ventas por vendedor
+
+La pestaña **Vendedores** de cada rifa y la página **Vendedores** (todas las rifas) muestran, por quien levantó cada pedido (o "Página pública"): pedidos, números vigentes, pagados, no concretados, cobrado y por cobrar. Aparte, los **cobros registrados por usuario** (quién confirmó cada pago) sirven para cuadrar el dinero de cada quien.
+
+## Sorteo
+
+Pestaña **Sorteo** (solo admin), en tres pasos:
+
+1. **Premios** en orden (1.er lugar, 2.º…), visibles en la página pública.
+2. **Cerrar ventas**, con la opción de liberar los apartados que sigan sin pagar. Se pueden reabrir mientras no haya resultado.
+3. **Registrar resultado**: el número ganador de cada premio. Si un número no tiene comprador o no está pagado, no se guarda nada y se pide confirmar. Un número no gana dos premios.
+
+Al registrarlo, la rifa queda **sorteada**: un trigger de Postgres impide cualquier cambio a sus asignaciones y la app no deja editar la rifa ni sus premios. El panel muestra a cada ganador con botón para avisarle por WhatsApp.
+
+## Organizador
+
+En **Organizador** (solo admin): nombre público, WhatsApp para recibir comprobantes, datos de pago y logo (PNG, JPG o WebP de hasta 256 KB, validado por su contenido y guardado en la base, así que no depende de un servicio de archivos). Se usan en la página pública, en el pedido, en los mensajes de WhatsApp y en los PDF.
+
 ## PDF para imprimir
 
 Desde el tablero, **Imprimir PDF** abre en otra pestaña cualquiera de estos cuatro documentos (tamaño carta, listos para imprimir o guardar):
@@ -130,7 +167,7 @@ Cada PDF se genera en el servidor al momento de pedirlo (`/rifas/<id>/pdf/<tipo>
 
 ## Historial
 
-Cada rifa tiene su historial (botón **Historial** del tablero, o **Ver historial del 0042** desde el detalle de un número): apartados, ventas, pagos, cancelaciones (con su motivo) y liberaciones, con la fecha, el comprador y quién lo hizo ("Sistema" para la liberación automática). Se filtra por tipo de movimiento o por número y se pagina de 100 en 100, del más reciente al más antiguo.
+Cada rifa tiene su historial (pestaña **Historial**, o **Ver historial del 0042** desde el detalle de un número): apartados, ventas, pagos, cancelaciones (con su motivo) y liberaciones, con la fecha, el comprador y quién lo hizo ("Sistema" para la liberación automática). Se filtra por tipo de movimiento o por número y se pagina de 100 en 100, del más reciente al más antiguo.
 
 ## Liberación programada
 
@@ -156,11 +193,12 @@ Las fechas se guardan en UTC y se muestran en la zona de `NEXT_PUBLIC_ZONA_HORAR
 ## Usuarios y acceso
 
 - **No hay registro público.** Las cuentas se crean con `pnpm usuario:crear` (o el seed en desarrollo); el endpoint de registro de Better Auth responde 400.
-- **Roles:** `admin` y `operador`. Solo el admin crea, configura y elimina rifas; los permisos del resto de las pantallas se definen conforme lleguen.
+- **Roles:** `admin` y `operador`. La matriz completa está en [docs/flujos.md](docs/flujos.md#permisos); en resumen, el operador aparta, vende, cobra y libera, pero no configura rifas, no sortea, no administra usuarios ni el perfil del organizador y **no cancela ventas ya pagadas**.
+- **Pantalla Usuarios** (admin): crear con una contraseña temporal que se muestra una sola vez, cambiar nombre y rol, restablecer contraseña y desactivar o reactivar (cierra sus sesiones). Siempre queda al menos un admin activo y nadie puede quitarse el rol ni desactivarse a sí mismo.
+- **Mi cuenta** (todos): cambiar la propia contraseña; se cierran las sesiones en otros dispositivos.
 - Cada usuario pertenece a un organizador y solo ve sus rifas.
 - **Protección de páginas:** `src/proxy.ts` manda al login a quien no tiene cookie de sesión, y cada página valida la sesión con `obtenerUsuarioActual()` (`src/server/sesion.ts`). Las acciones del servidor también deben llamarla.
 - **Límite de intentos:** en producción, 3 intentos de login cada 10 segundos por IP, guardados en la tabla `limites_de_solicitudes`.
-- **Desactivar una cuenta** (mientras no haya pantalla de usuarios): `update usuarios set banned = true where email = '...'`; ya no puede entrar. Para cerrar sus sesiones abiertas, borra sus filas de `sesiones`.
 - Lo que se aparta, paga, libera o cancela queda registrado con el usuario que lo hizo (`asignaciones.creada_por`, `movimientos.usuario_id`).
 
 ```bash
@@ -171,11 +209,14 @@ pnpm usuario:crear --email ana@ejemplo.com --nombre "Ana López" --rol operador
 
 | Tabla | Para qué |
 | --- | --- |
-| `organizadores` | Dueño de las rifas (hoy uno; preparado para varios) |
-| `rifas` | Configuración: rango de números, dígitos, precio, plazo para pagar, liberación automática |
+| `organizadores` | Dueño de las rifas (hoy uno; preparado para varios), con WhatsApp, datos de pago y logo |
+| `rifas` | Configuración: rango de números, dígitos, precio, plazo para pagar, liberación automática, página pública (enlace, plazo y máximo), estado (`activa`, `cerrada`, `sorteada`) |
+| `pedidos` | Agrupa los números de una solicitud: folio, enlace secreto, origen (`publico` o `interno`) y vendedor |
+| `premios` | Premios de la rifa en orden y, tras el sorteo, el número ganador |
+| `intentos_publicos` | Apartados de la página pública por conexión y teléfono, para los límites |
 | `numeros` | Una fila por número; se generan todas al crear la rifa |
 | `compradores` | Nombre, teléfono opcional y notas |
-| `asignaciones` | Cada apartado o venta de un número: estado (`apartado`, `vendido`, `liberado`, `cancelado`), pago (`pendiente`, `confirmado`), monto, fecha límite y fecha de pago |
+| `asignaciones` | Cada apartado o venta de un número, dentro de un pedido: estado (`apartado`, `vendido`, `liberado`, `cancelado`), pago (`pendiente`, `confirmado`), monto, fecha límite y fecha de pago |
 | `movimientos` | Historial de apartados, ventas, pagos, cancelaciones y liberaciones, con el usuario que los hizo |
 | `usuarios`, `sesiones`, `cuentas`, `verificaciones`, `limites_de_solicitudes` | Tablas de Better Auth (las columnas conservan los nombres en inglés que espera la librería) |
 
@@ -209,7 +250,7 @@ Cubren la creación, configuración y eliminación de rifas, la validación del 
 - varias liberaciones automáticas a la vez
 - cambiar el rango de una rifa mientras alguien aparta
 
-También cubren la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación), el secreto del cron, los montos del resumen y el contenido de cada PDF.
+También cubren la página pública (límites, rifas no publicadas o cerradas, qué datos se exponen), los pedidos (folio, enlace y estado), la gestión de usuarios (aislamiento por organizador, último admin, contraseñas temporales y cuentas desactivadas), el perfil del organizador (tipo real del logo), el reporte de ventas por vendedor, el sorteo (pasos, advertencias y solo lectura), la validación del formulario de apartado, que las operaciones del tablero no puedan tocar asignaciones de otra rifa, el historial (orden, filtros y paginación), el secreto del cron, los montos del resumen y el contenido de cada PDF.
 
 ## Cambios en la base de datos
 

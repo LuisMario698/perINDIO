@@ -1,9 +1,9 @@
 import { loadEnvConfig } from "@next/env";
-import { inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db/client";
 import { esBaseLocal } from "@/db/local";
-import { asignaciones, compradores, movimientos, organizadores, pedidos } from "@/db/schema";
+import { asignaciones, compradores, movimientos, numeros, organizadores, pedidos, rifas } from "@/db/schema";
 import {
   apartarNumeros,
   confirmarPago,
@@ -12,6 +12,7 @@ import {
 } from "@/server/asignaciones";
 import { crearAuth } from "@/server/auth-config";
 import { crearRifa } from "@/server/rifas";
+import { cerrarVentas, guardarPremios, listarPremios, registrarResultado } from "@/server/sorteo";
 import { crearUsuario } from "@/server/usuarios";
 
 loadEnvConfig(process.cwd());
@@ -28,6 +29,9 @@ const APELLIDOS = [
 ];
 
 type Metas = { vendidos: number; apartados: number; vencidos: number; liberados: number };
+
+/** Quién levanta los pedidos: el personal (por id) y qué fracción llega por la página pública. */
+type Ventas = { personal: string[]; fraccionPublica: number };
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -83,15 +87,32 @@ async function main() {
           organizadorId: organizador.id,
         })
       : null;
+    // Segunda vendedora para el reporte de ventas por vendedor (misma contraseña que el operador).
+    const vendedora = process.env.SEED_OPERADOR_PASSWORD
+      ? await crearUsuario(auth, {
+          email: "karla@perindio.test",
+          nombre: "Karla Ruiz",
+          password: process.env.SEED_OPERADOR_PASSWORD,
+          rol: "operador",
+          organizadorId: organizador.id,
+        })
+      : null;
+    const personal = [admin.id, operador?.id, vendedora?.id].filter((id): id is string => Boolean(id));
 
     const nuevos = Array.from({ length: 60 }, (_, i) => ({
       organizadorId: organizador.id,
       nombre: `${azar.elegir(NOMBRES)} ${azar.elegir(APELLIDOS)} ${azar.elegir(APELLIDOS)}`,
       telefono: i % 2 === 0 ? `55 0000 ${String(i).padStart(4, "0")}` : null,
     }));
-    const compradorIds = (
-      await db.insert(compradores).values(nuevos).returning({ id: compradores.id })
-    ).map((c) => c.id);
+    const insertados = await db
+      .insert(compradores)
+      .values(nuevos)
+      .returning({ id: compradores.id, telefono: compradores.telefono });
+    const compradorIds = {
+      todos: insertados.map((c) => c.id),
+      // La página pública siempre pide WhatsApp.
+      conTelefono: insertados.filter((c) => c.telefono).map((c) => c.id),
+    };
 
     const principal = await crearRifa(db, {
       organizadorId: organizador.id,
@@ -105,12 +126,17 @@ async function main() {
       liberacionAutomatica: false,
       fechaSorteo: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
     });
-    await poblarRifa(db, azar, principal, compradorIds, admin.id, {
+    await poblarRifa(db, azar, principal, compradorIds, { personal, fraccionPublica: 0.3 }, {
       vendidos: 380,
       apartados: 140,
       vencidos: 18,
       liberados: 12,
     });
+    await guardarPremios(db, organizador.id, principal.id, [
+      "Automóvil compacto 2026",
+      "Pantalla de 65 pulgadas",
+      "Celular de gama alta",
+    ]);
 
     const express = await crearRifa(db, {
       organizadorId: organizador.id,
@@ -123,12 +149,35 @@ async function main() {
       plazoApartadoHoras: 24,
       liberacionAutomatica: true,
     });
-    await poblarRifa(db, azar, express, compradorIds, admin.id, {
+    await poblarRifa(db, azar, express, compradorIds, { personal, fraccionPublica: 0.4 }, {
       vendidos: 30,
       apartados: 10,
       vencidos: 5,
       liberados: 0,
     });
+    await guardarPremios(db, organizador.id, express.id, ["Bicicleta de montaña", "Bocina Bluetooth"]);
+
+    // Una rifa que ya pasó por todo el flujo: ventas cerradas, sorteo y ganadores publicados.
+    const navidena = await crearRifa(db, {
+      organizadorId: organizador.id,
+      nombre: "Rifa Navideña 2025",
+      slug: "navidena-2025",
+      publica: true,
+      descripcion: "Rifa ya sorteada: muestra cómo se ven los resultados.",
+      cantidadNumeros: 100,
+      precioNumero: "20.00",
+      plazoApartadoHoras: 24,
+      liberacionAutomatica: false,
+      fechaSorteo: "2025-12-24",
+    });
+    await poblarRifa(db, azar, navidena, compradorIds, { personal, fraccionPublica: 0.3 }, {
+      vendidos: 72,
+      apartados: 4,
+      vencidos: 0,
+      liberados: 3,
+    });
+    await guardarPremios(db, organizador.id, navidena.id, ["Canasta navideña", "Pavo y cena para 6"]);
+    await sortear(db, azar, organizador.id, navidena.id, admin.id);
 
     const resumen = await db.execute<{
       rifa: string;
@@ -147,9 +196,10 @@ async function main() {
     `);
     console.table(resumen.map((fila) => ({ ...fila })));
     console.log(`Entra con ${admin.email} y la contraseña SEED_ADMIN_PASSWORD de tu .env.`);
-    if (operador) {
-      console.log(`Operador: ${operador.email} con SEED_OPERADOR_PASSWORD.`);
+    if (operador && vendedora) {
+      console.log(`Operadores: ${operador.email} y ${vendedora.email} con SEED_OPERADOR_PASSWORD.`);
     }
+    console.log("Páginas públicas: /r/pro-fondos-2026, /r/rifa-express y /r/navidena-2025 (sorteada).");
   } finally {
     await db.$client.end();
   }
@@ -160,8 +210,8 @@ async function poblarRifa(
   db: Db,
   azar: Azar,
   rifa: { id: string; numeroInicial: number; cantidadNumeros: number; plazoApartadoHoras: number },
-  compradorIds: string[],
-  usuarioId: string,
+  compradorIds: { todos: string[]; conTelefono: string[] },
+  ventas: Ventas,
   metas: Metas,
 ) {
   const libres = azar.barajar(
@@ -177,19 +227,26 @@ async function poblarRifa(
       restantes -= cantidad;
     }
   }
-  const apartar = (numeros: number[], pagoConfirmado = false) =>
-    apartarNumeros(db, {
+  const quien = () => azar.elegir(ventas.personal);
+  // Un pedido de la página pública (sin vendedor) o uno que levanta alguien del personal.
+  const apartar = (numeros: number[], pagoConfirmado = false) => {
+    const publico = !pagoConfirmado && azar.siguiente() < ventas.fraccionPublica;
+    return apartarNumeros(db, {
       rifaId: rifa.id,
       numeros,
-      comprador: { id: azar.elegir(compradorIds) },
+      comprador: { id: azar.elegir(publico ? compradorIds.conTelefono : compradorIds.todos) },
       pagoConfirmado,
-      usuarioId,
+      usuarioId: publico ? null : quien(),
+      origen: publico ? "publico" : "interno",
     });
+  };
 
   await porCompras(metas.vendidos, async (numeros) => {
     const ventaDirecta = azar.siguiente() < 0.4;
     const asignadas = await apartar(numeros, ventaDirecta);
-    if (!ventaDirecta) await confirmarPago(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId });
+    if (!ventaDirecta) {
+      await confirmarPago(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId: quien() });
+    }
     const hace = azar.entero(60, 20 * 24 * 60);
     await envejecer(db, asignadas, hace, ventaDirecta ? 0 : azar.entero(0, Math.min(hace, plazoMin)));
   });
@@ -206,9 +263,35 @@ async function poblarRifa(
   await porCompras(metas.liberados, async (numeros) => {
     const asignadas = await apartar(numeros);
     await envejecer(db, asignadas, azar.entero(plazoMin + 120, plazoMin + 72 * 60));
-    await liberarAsignaciones(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId });
+    await liberarAsignaciones(db, { asignacionIds: asignadas.map((a) => a.id), usuarioId: quien() });
     libres.push(...numeros);
   });
+}
+
+/** Cierra ventas liberando lo pendiente y registra como ganadores números pagados al azar. */
+async function sortear(db: Db, azar: Azar, organizadorId: string, rifaId: string, usuarioId: string) {
+  await cerrarVentas(db, { organizadorId, rifaId, usuarioId, liberarPendientes: true });
+  const pagados = await db
+    .select({ numero: numeros.numero })
+    .from(asignaciones)
+    .innerJoin(numeros, eq(numeros.id, asignaciones.numeroId))
+    .where(
+      and(
+        eq(asignaciones.rifaId, rifaId),
+        eq(asignaciones.estado, "vendido"),
+        eq(asignaciones.estadoPago, "confirmado"),
+      ),
+    );
+  const premios = await listarPremios(db, rifaId);
+  const elegidos = azar.barajar(pagados.map((p) => p.numero));
+  const resultado = await registrarResultado(db, {
+    organizadorId,
+    rifaId,
+    ganadores: Object.fromEntries(premios.map((p, i) => [p.id, elegidos[i]])),
+  });
+  if (!resultado.registrado) throw new Error(`No se pudo sortear: ${resultado.advertencias.join(" ")}`);
+  // Como si el sorteo hubiera sido en la fecha anunciada.
+  await db.update(rifas).set({ sorteadaEn: new Date("2025-12-24T20:00:00-06:00") }).where(eq(rifas.id, rifaId));
 }
 
 /**
