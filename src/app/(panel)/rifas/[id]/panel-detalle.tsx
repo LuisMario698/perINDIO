@@ -2,16 +2,16 @@
 
 import { cn } from "cn";
 import Link from "next/link";
-import { useActionState, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { formatearDinero, formatearFechaHora, tiempoRelativo } from "@/lib/formato";
 import { formatearNumero } from "@/lib/numeros";
 import type { NumeroOcupado } from "@/server/consultas";
 
-import type { EstadoTablero } from "./acciones";
+import { BotonOperacion } from "./boton-operacion";
+import { CompartirPedido } from "./compartir-pedido";
 import {
   categoriaDe,
   NOMBRE_CATEGORIA,
@@ -26,6 +26,7 @@ export function PanelDetalle({
   ocupado,
   delComprador,
   acciones,
+  urlBase,
   onTerminar,
   onError,
   onCerrar,
@@ -35,6 +36,7 @@ export function PanelDetalle({
   /** Todos los números vigentes del mismo comprador en esta rifa (incluye este). */
   delComprador: NumeroOcupado[];
   acciones: AccionesTablero;
+  urlBase: string;
   onTerminar: (mensaje: string) => void;
   onError: (mensaje: string) => void;
   onCerrar: () => void;
@@ -91,6 +93,26 @@ export function PanelDetalle({
         {ocupado.fechaPago && <Dato nombre="Pagado">{formatearFechaHora(ocupado.fechaPago)}</Dato>}
         {ocupado.observaciones && <Dato nombre="Notas">{ocupado.observaciones}</Dato>}
       </dl>
+      {ocupado.folio && ocupado.pedidoToken && (
+        <div className="space-y-2 rounded-lg border p-3">
+          <p className="text-sm">
+            Pedido <strong className="font-mono">{ocupado.folio}</strong>
+          </p>
+          <CompartirPedido
+            pedido={{
+              folio: ocupado.folio,
+              token: ocupado.pedidoToken,
+              comprador: ocupado.compradorNombre ?? "",
+              telefono: ocupado.compradorTelefono,
+              numeros: delComprador
+                .filter((o) => o.pedidoId === ocupado.pedidoId)
+                .map((o) => formatearNumero(o.numero, rifa.digitos)),
+            }}
+            rifa={rifa.nombre}
+            urlBase={urlBase}
+          />
+        </div>
+      )}
       <Link
         href={`/rifas/${rifa.id}/historial?numero=${ocupado.numero}`}
         className="inline-block text-sm text-muted-foreground underline hover:text-foreground"
@@ -188,80 +210,5 @@ function Dato({ nombre, children }: { nombre: string; children: ReactNode }) {
       <dt className="text-muted-foreground">{nombre}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </>
-  );
-}
-
-/** Botón que ejecuta una operación sobre asignaciones; con `confirmacion`, pide confirmarla antes. */
-function BotonOperacion({
-  accion,
-  ids,
-  onTerminar,
-  onError,
-  variante = "default",
-  confirmacion,
-  conMotivo = false,
-  children,
-}: {
-  accion: AccionesTablero["pagar"];
-  ids: string[];
-  onTerminar: (mensaje: string) => void;
-  onError: (mensaje: string) => void;
-  variante?: "default" | "outline" | "ghost";
-  confirmacion?: string;
-  conMotivo?: boolean;
-  children: ReactNode;
-}) {
-  const [confirmando, setConfirmando] = useState(false);
-  const [estado, enviar, enviando] = useActionState(
-    async (previo: EstadoTablero, formData: FormData) => {
-      const resultado = await accion(previo, formData);
-      if (resultado.mensaje) onTerminar(resultado.mensaje);
-      if (resultado.error) onError(resultado.error);
-      return resultado;
-    },
-    {},
-  );
-
-  if (confirmacion && !confirmando) {
-    return (
-      <Button type="button" variant={variante} className="w-full" onClick={() => setConfirmando(true)}>
-        {children}
-      </Button>
-    );
-  }
-
-  return (
-    <form
-      action={enviar}
-      className={cn("space-y-2", confirmacion && "rounded-lg border p-3")}
-    >
-      {ids.map((id) => (
-        <input key={id} type="hidden" name="asignacionId" value={id} />
-      ))}
-      {confirmacion && <p className="text-sm">{confirmacion}</p>}
-      {conMotivo && (
-        <Input name="motivo" placeholder="Motivo (opcional)" maxLength={200} aria-label="Motivo" />
-      )}
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          variant={confirmacion ? (variante === "default" ? "default" : "destructive") : variante}
-          className="flex-1"
-          disabled={enviando}
-        >
-          {enviando ? "Guardando…" : confirmacion ? "Sí, continuar" : children}
-        </Button>
-        {confirmacion && (
-          <Button type="button" variant="outline" onClick={() => setConfirmando(false)}>
-            No
-          </Button>
-        )}
-      </div>
-      {estado.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {estado.error}
-        </p>
-      )}
-    </form>
   );
 }

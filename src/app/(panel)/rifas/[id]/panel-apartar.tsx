@@ -10,7 +10,7 @@ import { formatearDinero } from "@/lib/formato";
 import { formatearNumero } from "@/lib/numeros";
 import type { NumeroOcupado } from "@/server/consultas";
 
-import type { EstadoTablero } from "./acciones";
+import type { EstadoTablero, PedidoCreado } from "./acciones";
 import type { AccionesTablero, RifaTablero } from "./estados";
 
 const MAXIMO_VISIBLES = 40;
@@ -34,7 +34,7 @@ export function PanelApartar({
   numeros: number[];
   ocupados: NumeroOcupado[];
   accion: AccionesTablero["apartar"];
-  onTerminar: (mensaje: string) => void;
+  onTerminar: (mensaje: string, pedido?: PedidoCreado) => void;
   onError: (mensaje: string) => void;
   onQuitar: (numero: number) => void;
   onLimpiar: () => void;
@@ -45,7 +45,7 @@ export function PanelApartar({
   const [estado, enviar, enviando] = useActionState(
     async (previo: EstadoTablero, formData: FormData) => {
       const resultado = await accion(previo, formData);
-      if (resultado.mensaje) onTerminar(resultado.mensaje);
+      if (resultado.mensaje) onTerminar(resultado.mensaje, resultado.pedido);
       if (resultado.error) onError(resultado.error);
       return resultado;
     },

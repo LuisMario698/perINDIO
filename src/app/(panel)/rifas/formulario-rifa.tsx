@@ -33,6 +33,11 @@ export type ValoresRifa = {
   liberacionAutomatica: boolean;
   fechaSorteo: string;
   estado: "activa" | "cerrada";
+  publica: boolean;
+  slug: string;
+  plazoPublicoHoras: string;
+  maxNumerosPublico: string;
+  instruccionesPago: string;
 };
 
 const VALORES_NUEVA_RIFA: ValoresRifa = {
@@ -46,6 +51,11 @@ const VALORES_NUEVA_RIFA: ValoresRifa = {
   liberacionAutomatica: false,
   fechaSorteo: "",
   estado: "activa",
+  publica: true,
+  slug: "",
+  plazoPublicoHoras: "24",
+  maxNumerosPublico: "10",
+  instruccionesPago: "",
 };
 
 type Props = {
@@ -294,6 +304,99 @@ export function FormularioRifa({ modo, accion, inicial = VALORES_NUEVA_RIFA, ran
             </Campo>
           )}
         </div>
+      </Seccion>
+
+      <Seccion
+        titulo="Página pública"
+        nota="Un enlace para compartir por WhatsApp: los compradores ven los números libres y apartan solos."
+      >
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+          <input
+            type="checkbox"
+            name="publica"
+            checked={valores.publica}
+            onChange={(e) => cambiar("publica", e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-primary"
+          />
+          <span className="space-y-0.5">
+            <span className="block text-sm font-medium">Publicar la página de la rifa</span>
+            <span className="block text-xs text-muted-foreground">
+              Si la apagas, solo tu equipo puede apartar desde el panel.
+            </span>
+          </span>
+        </label>
+        <Campo
+          id={idDe("slug")}
+          etiqueta="Enlace"
+          error={errores.slug}
+          ayuda={
+            modo === "crear"
+              ? "Déjalo vacío para generarlo a partir del nombre."
+              : "Si lo cambias, el enlace anterior deja de funcionar."
+          }
+        >
+          <div className="flex items-center rounded-lg border border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+            <span className="pl-2.5 text-sm text-muted-foreground">/r/</span>
+            <Input
+              {...describir("slug", true)}
+              value={valores.slug}
+              onChange={(e) => cambiar("slug", e.target.value.toLowerCase())}
+              placeholder="rifa-de-navidad"
+              className="border-0 pl-1 focus-visible:ring-0"
+              autoCapitalize="none"
+            />
+          </div>
+        </Campo>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo
+            id={idDe("plazoPublicoHoras")}
+            etiqueta="Plazo para pagar (horas)"
+            error={errores.plazoPublicoHoras}
+            ayuda="Para lo que se aparta desde la página; suele ser más corto."
+          >
+            <Input
+              {...describir("plazoPublicoHoras", true)}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={valores.plazoPublicoHoras}
+              onChange={(e) => cambiar("plazoPublicoHoras", e.target.value)}
+              required
+            />
+          </Campo>
+          <Campo
+            id={idDe("maxNumerosPublico")}
+            etiqueta="Máximo de números por comprador"
+            error={errores.maxNumerosPublico}
+            ayuda="Entre todos sus apartados sin pagar."
+          >
+            <Input
+              {...describir("maxNumerosPublico", true)}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={100}
+              value={valores.maxNumerosPublico}
+              onChange={(e) => cambiar("maxNumerosPublico", e.target.value)}
+              required
+            />
+          </Campo>
+        </div>
+        <Campo
+          id={idDe("instruccionesPago")}
+          etiqueta="Instrucciones de pago (opcional)"
+          error={errores.instruccionesPago}
+          ayuda="Si lo dejas vacío se usan los datos de pago del organizador."
+        >
+          <Textarea
+            {...describir("instruccionesPago", true)}
+            value={valores.instruccionesPago}
+            onChange={(e) => cambiar("instruccionesPago", e.target.value)}
+            rows={3}
+            maxLength={1000}
+            placeholder={"Transferencia a ...\nCLABE ...\nO en efectivo con ..."}
+          />
+        </Campo>
       </Seccion>
 
       {estado.error && (

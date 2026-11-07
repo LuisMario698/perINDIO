@@ -66,6 +66,11 @@ async function Configuracion({ params }: Pick<PageProps<"/rifas/[id]/configuraci
               liberacionAutomatica: rifa.liberacionAutomatica,
               fechaSorteo: rifa.fechaSorteo ?? "",
               estado: rifa.estado,
+              publica: rifa.publica,
+              slug: rifa.slug,
+              plazoPublicoHoras: String(rifa.plazoPublicoHoras),
+              maxNumerosPublico: String(rifa.maxNumerosPublico),
+              instruccionesPago: rifa.instruccionesPago ?? "",
             }}
           />
         </CardContent>

@@ -15,8 +15,10 @@ import { NOMBRE_PDF, TIPOS_PDF } from "@/lib/pdfs";
 import { liberarApartadosVencidos } from "@/server/asignaciones";
 import { listarOcupados, obtenerRifa } from "@/server/consultas";
 import { obtenerUsuarioActual } from "@/server/sesion";
+import { urlBase } from "@/server/url";
 
 import { apartarAccion, operarAsignacionesAccion } from "./acciones";
+import { CompartirRifa } from "./compartir-rifa";
 import { Tablero } from "./tablero";
 
 export const metadata = { title: "Números · perINDIO" };
@@ -74,25 +76,14 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
         </div>
         <div className="flex gap-2">
           <MenuPdf rifaId={rifa.id} />
-          <Link
-            href={`/rifas/${rifa.id}/historial`}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            Historial
-          </Link>
-          {usuario.rol === "admin" && (
-            <Link
-              href={`/rifas/${rifa.id}/configuracion`}
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Configurar
-            </Link>
-          )}
         </div>
       </div>
+      <CompartirRifa rifa={rifa} urlBase={await urlBase()} esAdmin={usuario.rol === "admin"} />
       <Tablero
+        urlBase={await urlBase()}
         rifa={{
           id: rifa.id,
+          nombre: rifa.nombre,
           numeroInicial: rifa.numeroInicial,
           cantidadNumeros: rifa.cantidadNumeros,
           digitos: rifa.digitos,

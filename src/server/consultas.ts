@@ -7,9 +7,12 @@ import {
   movimientos,
   numeros,
   numerosEstado,
+  pedidos,
   rifas,
   usuarios,
 } from "@/db/schema";
+
+import { estadoPedido } from "./pedidos";
 
 /**
  * Rifas del organizador con el conteo de sus números por estado y el dinero cobrado y por
@@ -73,8 +76,13 @@ export async function listarOcupados(db: Db, rifaId: string) {
       fechaPago: numerosEstado.fechaPago,
       asignadoEn: numerosEstado.asignadoEn,
       observaciones: numerosEstado.observaciones,
+      pedidoId: numerosEstado.pedidoId,
+      folio: numerosEstado.folio,
+      // El enlace del pedido se comparte con el comprador desde el panel.
+      pedidoToken: pedidos.token,
     })
     .from(numerosEstado)
+    .leftJoin(pedidos, eq(pedidos.id, numerosEstado.pedidoId))
     .where(and(eq(numerosEstado.rifaId, rifaId), ne(numerosEstado.estado, "disponible")))
     .orderBy(numerosEstado.numero);
 }
@@ -159,3 +167,74 @@ export async function listarNumerosParaPdf(db: Db, rifaId: string) {
 }
 
 export type NumeroParaPdf = Awaited<ReturnType<typeof listarNumerosParaPdf>>[number];
+
+/**
+ * Pedidos de una rifa, del más reciente al más antiguo, con sus números, montos y estado.
+ * Es la vista con la que se cobra: el comprador manda su folio y aquí se confirma su pago.
+ */
+export async function listarPedidos(db: Db, rifaId: string) {
+  const filas = await db
+    .select({
+      id: pedidos.id,
+      folio: pedidos.folio,
+      token: pedidos.token,
+      origen: pedidos.origen,
+      creadoEn: pedidos.creadoEn,
+      comprador: compradores.nombre,
+      telefono: compradores.telefono,
+      vendedor: usuarios.name,
+      asignaciones: sql<
+        {
+          id: string;
+          numero: number;
+          estado: "apartado" | "vendido" | "liberado" | "cancelado";
+          estadoPago: "pendiente" | "confirmado";
+          monto: string;
+          fechaLimite: string | null;
+        }[]
+      >`json_agg(json_build_object(
+          'id', ${asignaciones.id},
+          'numero', ${numeros.numero},
+          'estado', ${asignaciones.estado},
+          'estadoPago', ${asignaciones.estadoPago},
+          'monto', ${asignaciones.monto},
+          'fechaLimite', ${asignaciones.fechaLimite}
+        ) order by ${numeros.numero})`,
+    })
+    .from(pedidos)
+    .innerJoin(compradores, eq(compradores.id, pedidos.compradorId))
+    .innerJoin(asignaciones, eq(asignaciones.pedidoId, pedidos.id))
+    .innerJoin(numeros, eq(numeros.id, asignaciones.numeroId))
+    .leftJoin(usuarios, eq(usuarios.id, pedidos.vendedorId))
+    .where(eq(pedidos.rifaId, rifaId))
+    .groupBy(pedidos.id, compradores.id, usuarios.id)
+    .orderBy(desc(pedidos.creadoEn));
+
+  const ahora = new Date();
+  return filas.map((fila) => {
+    const lista = fila.asignaciones.map((a) => ({
+      ...a,
+      fechaLimite: a.fechaLimite ? new Date(a.fechaLimite) : null,
+    }));
+    const vigentes = lista.filter((a) => a.estado === "apartado" || a.estado === "vendido");
+    const pendientes = vigentes.filter((a) => a.estadoPago === "pendiente");
+    const suma = (l: typeof lista) => l.reduce((t, a) => t + Number(a.monto), 0);
+    const vencimientos = pendientes
+      .map((a) => a.fechaLimite)
+      .filter((f): f is Date => f !== null)
+      .sort((a, b) => a.getTime() - b.getTime());
+    return {
+      ...fila,
+      asignaciones: lista,
+      estado: estadoPedido(lista, ahora),
+      total: suma(vigentes),
+      porPagar: suma(pendientes),
+      pendientesIds: pendientes.map((a) => a.id),
+      // Apartados sin pagar que todavía se pueden liberar.
+      liberablesIds: pendientes.filter((a) => a.estado === "apartado").map((a) => a.id),
+      venceEn: vencimientos[0] ?? null,
+    };
+  });
+}
+
+export type PedidoDelPanel = Awaited<ReturnType<typeof listarPedidos>>[number];

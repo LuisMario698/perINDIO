@@ -184,6 +184,40 @@ describe("actualizarRifa", () => {
   });
 });
 
+describe("opciones de la página pública", () => {
+  it("guarda el enlace, los límites y las instrucciones de pago", async () => {
+    const rifa = await crearRifaDePrueba(db, { slug: "original" });
+    await crearRifaDePrueba(db, { slug: "ocupado" });
+
+    const actualizada = await actualizarRifa(
+      db,
+      rifa.id,
+      rifa.organizadorId,
+      await configuracion(rifa.id, {
+        publica: false,
+        slug: "nuevo-enlace",
+        plazoPublicoHoras: 6,
+        maxNumerosPublico: 8,
+        instruccionesPago: "  CLABE 123  ",
+      }),
+    );
+    expect(actualizada).toMatchObject({
+      publica: false,
+      slug: "nuevo-enlace",
+      plazoPublicoHoras: 6,
+      maxNumerosPublico: 8,
+      instruccionesPago: "CLABE 123",
+    });
+
+    // Sin slug se conserva el actual; uno ocupado se rechaza.
+    const igual = await actualizarRifa(db, rifa.id, rifa.organizadorId, await configuracion(rifa.id));
+    expect(igual.slug).toBe("nuevo-enlace");
+    await expect(
+      actualizarRifa(db, rifa.id, rifa.organizadorId, await configuracion(rifa.id, { slug: "ocupado" })),
+    ).rejects.toThrow("Ese enlace ya lo usa otra rifa");
+  });
+});
+
 describe("eliminarRifa", () => {
   it("borra una rifa sin asignaciones junto con sus números", async () => {
     const rifa = await crearRifaDePrueba(db);

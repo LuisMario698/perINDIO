@@ -22,6 +22,8 @@ import {
   type Filtro,
   type RifaTablero,
 } from "./estados";
+import type { PedidoCreado } from "./acciones";
+import { CompartirPedido } from "./compartir-pedido";
 import { PanelApartar } from "./panel-apartar";
 import { PanelDetalle } from "./panel-detalle";
 
@@ -29,6 +31,8 @@ type Props = {
   rifa: RifaTablero;
   ocupados: NumeroOcupado[];
   acciones: AccionesTablero;
+  /** Origen público de la app, para los enlaces que se mandan al comprador. */
+  urlBase: string;
 };
 
 /**
@@ -36,7 +40,7 @@ type Props = {
  * Los disponibles se tocan para seleccionarlos y apartarlos juntos; un número ocupado
  * se toca para ver su detalle (comprador, pago, vencimiento) y operar sobre él.
  */
-export function Tablero({ rifa, ocupados, acciones }: Props) {
+export function Tablero({ rifa, ocupados, acciones, urlBase }: Props) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busqueda, setBusqueda] = useState("");
   const [seleccion, setSeleccion] = useState<number[]>([]);
@@ -44,7 +48,11 @@ export function Tablero({ rifa, ocupados, acciones }: Props) {
   // En celular, mientras se eligen números se muestra una barra compacta; el formulario
   // se abre como hoja inferior al tocar "Apartar".
   const [hojaAbierta, setHojaAbierta] = useState(false);
-  const [aviso, setAviso] = useState<{ tipo: "exito" | "error"; texto: string } | null>(null);
+  const [aviso, setAviso] = useState<{
+    tipo: "exito" | "error";
+    texto: string;
+    pedido?: PedidoCreado;
+  } | null>(null);
 
   const porNumero = useMemo(() => new Map(ocupados.map((o) => [o.numero, o])), [ocupados]);
   const numeros = useMemo(
@@ -107,8 +115,8 @@ export function Tablero({ rifa, ocupados, acciones }: Props) {
     [porNumero, activa],
   );
 
-  function terminar(mensaje: string) {
-    setAviso({ tipo: "exito", texto: mensaje });
+  function terminar(mensaje: string, pedido?: PedidoCreado) {
+    setAviso({ tipo: "exito", texto: mensaje, pedido });
     setSeleccion([]);
     setAbierto(null);
     setHojaAbierta(false);
@@ -140,9 +148,12 @@ export function Tablero({ rifa, ocupados, acciones }: Props) {
         </p>
       )}
       {aviso?.tipo === "exito" && (
-        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {aviso.texto}
-        </p>
+        <div role="status" className="space-y-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          <p>{aviso.texto}</p>
+          {aviso.pedido && (
+            <CompartirPedido pedido={aviso.pedido} rifa={rifa.nombre} urlBase={urlBase} />
+          )}
+        </div>
       )}
       {aviso?.tipo === "error" && !panelActivo && (
         <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -233,6 +244,7 @@ export function Tablero({ rifa, ocupados, acciones }: Props) {
               ocupado={ocupadoAbierto}
               delComprador={delComprador}
               acciones={acciones}
+              urlBase={urlBase}
               onTerminar={terminar}
               onError={avisarError}
               onCerrar={() => setAbierto(null)}

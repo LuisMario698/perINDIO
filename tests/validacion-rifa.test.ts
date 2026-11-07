@@ -14,6 +14,11 @@ const valida = {
   liberacionAutomatica: true,
   fechaSorteo: "",
   estado: undefined,
+  publica: true,
+  slug: "",
+  plazoPublicoHoras: "24",
+  maxNumerosPublico: "10",
+  instruccionesPago: "",
 };
 
 function errores(datos: Record<string, unknown>) {
@@ -34,6 +39,11 @@ describe("esquemaRifa", () => {
       liberacionAutomatica: true,
       fechaSorteo: null,
       estado: "activa",
+      publica: true,
+      slug: undefined,
+      plazoPublicoHoras: 24,
+      maxNumerosPublico: 10,
+      instruccionesPago: null,
     });
   });
 

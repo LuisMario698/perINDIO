@@ -10,6 +10,7 @@ export type Filtro = "todos" | Categoria | "pendientes";
 
 export type RifaTablero = {
   id: string;
+  nombre: string;
   numeroInicial: number;
   cantidadNumeros: number;
   digitos: number;

@@ -19,6 +19,8 @@ export type DatosPdf = {
   /** Todos los números de la rifa, en orden. */
   numeros: NumeroParaPdf[];
   generadoEn: Date;
+  /** Si la rifa es pública: enlace y su código QR (PNG en data URL) para apartar en línea. */
+  enlacePublico?: { url: string; qr: string };
 };
 
 // Carta vertical, en puntos (1/72 de pulgada).
@@ -104,6 +106,16 @@ function dibujarDisponibles(doc: jsPDF, datos: DatosPdf) {
   const altoCelda = 20;
 
   let y = encabezado(doc, datos, "Números disponibles", resumen);
+  if (datos.enlacePublico) {
+    // Esquina superior derecha de la primera hoja: QR para apartar desde el celular.
+    const lado = 62;
+    const x = doc.internal.pageSize.getWidth() - MARGEN - lado;
+    doc.addImage(datos.enlacePublico.qr, "PNG", x, MARGEN - 4, lado, lado);
+    doc.setFontSize(7);
+    doc.setTextColor(GRIS);
+    doc.text("Aparta en línea", x + lado / 2, MARGEN + lado + 4, { align: "center" });
+    doc.setTextColor(TINTA);
+  }
   if (libres.length === 0) {
     doc.setFontSize(11);
     doc.text("No quedan números disponibles.", MARGEN, y + 12);

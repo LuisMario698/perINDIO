@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { es } from "zod/locales";
 
+import { FORMATO_SLUG } from "../slug";
+
 // Mensajes de zod en español para los casos que no tienen uno propio.
 z.config(es());
 
@@ -48,6 +50,27 @@ export const esquemaRifa = z
       .union([z.literal(""), z.iso.date("Fecha no válida.")])
       .transform((v) => v || null),
     estado: z.enum(["activa", "cerrada"]).default("activa"),
+    // Página pública
+    publica: z.boolean(),
+    slug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(60, "Máximo 60 caracteres.")
+      .refine((v) => v === "" || (v.length >= 3 && FORMATO_SLUG.test(v)), {
+        message: "Solo minúsculas, números y guiones (por ejemplo rifa-de-navidad).",
+      })
+      // Vacío: se genera a partir del nombre (al crear) o se queda el actual (al editar).
+      .transform((v) => v || undefined),
+    plazoPublicoHoras: entero()
+      .min(1, "Al menos una hora.")
+      .max(LIMITES_RIFA.plazoMaximoHoras, "Máximo 90 días (2,160 horas)."),
+    maxNumerosPublico: entero().min(1, "Al menos 1.").max(100, "Máximo 100."),
+    instruccionesPago: z
+      .string()
+      .trim()
+      .max(1000, "Máximo 1,000 caracteres.")
+      .transform((v) => v || null),
   })
   .superRefine((datos, ctx) => {
     const ultimo = datos.numeroInicial + datos.cantidadNumeros - 1;
@@ -81,6 +104,11 @@ export function leerFormularioRifa(formData: FormData) {
     liberacionAutomatica: formData.get("liberacionAutomatica") === "on",
     fechaSorteo: texto("fechaSorteo"),
     estado: texto("estado") || undefined,
+    publica: formData.get("publica") === "on",
+    slug: texto("slug"),
+    plazoPublicoHoras: texto("plazoPublicoHoras"),
+    maxNumerosPublico: texto("maxNumerosPublico"),
+    instruccionesPago: texto("instruccionesPago"),
   };
 }
 
