@@ -47,7 +47,7 @@ export async function obtenerRifaPublica(db: Db, slug: string) {
         id: organizadores.id,
         nombre: organizadores.nombre,
         whatsapp: organizadores.whatsapp,
-        tieneLogo: sql<boolean>`${organizadores.logo} is not null`,
+        logoVersion: sql<string | null>`left(md5(${organizadores.logo}), 8)`,
       },
     })
     .from(rifas)
@@ -183,7 +183,7 @@ export async function obtenerPedidoPublico(db: Db, token: string) {
         nombre: organizadores.nombre,
         whatsapp: organizadores.whatsapp,
         datosPago: organizadores.datosPago,
-        tieneLogo: sql<boolean>`${organizadores.logo} is not null`,
+        logoVersion: sql<string | null>`left(md5(${organizadores.logo}), 8)`,
       },
       comprador: { nombre: compradores.nombre, telefono: compradores.telefono },
     })

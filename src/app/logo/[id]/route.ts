@@ -17,7 +17,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/logo/[id]">) {
   return new Response(new Uint8Array(fila.logo), {
     headers: {
       "Content-Type": fila.tipo,
-      "Cache-Control": "public, max-age=300",
+      // La URL lleva ?v=<huella del logo>: al cambiar el logo cambia la URL.
+      "Cache-Control": "public, max-age=86400",
       "X-Content-Type-Options": "nosniff",
     },
   });

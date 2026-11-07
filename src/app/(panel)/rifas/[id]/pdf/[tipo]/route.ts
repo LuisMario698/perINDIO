@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { esUuid } from "@/lib/validacion/rifa";
 import { listarNumerosParaPdf, obtenerRifa } from "@/server/consultas";
 import { TIPOS_PDF, type TipoPdf } from "@/lib/pdfs";
+import { logoParaPdf, obtenerPerfil } from "@/server/organizador";
 import { generarPdf } from "@/server/pdf";
 import { leerSesion } from "@/server/sesion";
 import { urlBase } from "@/server/url";
@@ -20,13 +21,23 @@ export async function GET(_request: Request, ctx: RouteContext<"/rifas/[id]/pdf/
   const rifa = await obtenerRifa(db, id, sesion.user.organizadorId);
   if (!rifa) return new Response("No encontrado.", { status: 404 });
 
-  const numeros = await listarNumerosParaPdf(db, rifa.id);
+  const [numeros, perfil, logo] = await Promise.all([
+    listarNumerosParaPdf(db, rifa.id),
+    obtenerPerfil(db, rifa.organizadorId),
+    logoParaPdf(db, rifa.organizadorId),
+  ]);
   let enlacePublico: { url: string; qr: string } | undefined;
   if (rifa.publica && tipo === "disponibles") {
     const url = `${await urlBase()}/r/${rifa.slug}`;
     enlacePublico = { url, qr: await QRCode.toDataURL(url, { margin: 1, width: 300 }) };
   }
-  const pdf = generarPdf(tipo as TipoPdf, { rifa, numeros, generadoEn: new Date(), enlacePublico });
+  const pdf = generarPdf(tipo as TipoPdf, {
+    rifa,
+    numeros,
+    generadoEn: new Date(),
+    enlacePublico,
+    organizador: { nombre: perfil.nombre, whatsapp: perfil.whatsapp, logo },
+  });
 
   return new Response(pdf, {
     headers: {

@@ -4,6 +4,7 @@ import { autoTable, type CellInput, type RowInput } from "jspdf-autotable";
 import { formatearDinero, formatearEntero, formatearFecha, formatearFechaHora } from "@/lib/formato";
 import { formatearNumero } from "@/lib/numeros";
 import { NOMBRE_PDF, type TipoPdf } from "@/lib/pdfs";
+import { formatearWhatsApp } from "@/lib/validacion/organizador";
 
 import type { NumeroParaPdf } from "./consultas";
 
@@ -21,7 +22,15 @@ export type DatosPdf = {
   generadoEn: Date;
   /** Si la rifa es pública: enlace y su código QR (PNG en data URL) para apartar en línea. */
   enlacePublico?: { url: string; qr: string };
+  /** Quién organiza: va en el pie de cada página, y el logo junto al título. */
+  organizador?: {
+    nombre: string;
+    whatsapp: string | null;
+    logo?: { datos: Uint8Array; formato: "PNG" | "JPEG" };
+  };
 };
+
+const LADO_LOGO = 40;
 
 // Carta vertical, en puntos (1/72 de pulgada).
 const MARGEN = 40;
@@ -46,21 +55,28 @@ export function generarPdf(
   if (tipo === "apartados") dibujarApartados(doc, datos);
   if (tipo === "ventas") dibujarVentas(doc, datos);
 
-  pieDePagina(doc, datos.generadoEn);
+  pieDePagina(doc, datos);
   return doc.output("arraybuffer");
 }
 
 /** Título de la rifa y una línea de datos; devuelve la altura en la que puede empezar el contenido. */
 function encabezado(doc: jsPDF, datos: DatosPdf, titulo: string, resumen: string): number {
   const { rifa } = datos;
+  const logo = datos.organizador?.logo;
+  let x = MARGEN;
+  if (logo) {
+    // El alias hace que la imagen se guarde una sola vez aunque se repita en cada página.
+    doc.addImage(logo.datos, logo.formato, MARGEN, MARGEN - 4, LADO_LOGO, LADO_LOGO, "logo", "FAST");
+    x += LADO_LOGO + 10;
+  }
   doc.setTextColor(TINTA);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text(rifa.nombre, MARGEN, MARGEN + 12);
+  doc.text(rifa.nombre, x, MARGEN + 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(titulo, MARGEN, MARGEN + 30);
+  doc.text(titulo, x, MARGEN + 30);
 
   const detalles = [
     resumen,
@@ -75,7 +91,15 @@ function encabezado(doc: jsPDF, datos: DatosPdf, titulo: string, resumen: string
   return MARGEN + 74;
 }
 
-function pieDePagina(doc: jsPDF, generadoEn: Date) {
+function pieDePagina(doc: jsPDF, { generadoEn, organizador }: DatosPdf) {
+  const quien = organizador
+    ? [
+        `Organiza ${organizador.nombre}`,
+        organizador.whatsapp ? `WhatsApp ${formatearWhatsApp(organizador.whatsapp)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") + " · "
+    : "";
   const paginas = doc.getNumberOfPages();
   const ancho = doc.internal.pageSize.getWidth();
   const alto = doc.internal.pageSize.getHeight();
@@ -84,7 +108,7 @@ function pieDePagina(doc: jsPDF, generadoEn: Date) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(GRIS);
-    doc.text(`perINDIO · ${formatearFechaHora(generadoEn)}`, MARGEN, alto - 20);
+    doc.text(`${quien}perINDIO · ${formatearFechaHora(generadoEn)}`, MARGEN, alto - 20);
     doc.text(`Página ${pagina} de ${paginas}`, ancho - MARGEN, alto - 20, { align: "right" });
   }
 }

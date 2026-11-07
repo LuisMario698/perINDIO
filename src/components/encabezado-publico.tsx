@@ -4,15 +4,15 @@ import { Logo } from "@/components/logo";
 export function EncabezadoPublico({
   organizador,
 }: {
-  organizador: { id: string; nombre: string; tieneLogo: boolean };
+  organizador: { id: string; nombre: string; logoVersion: string | null };
 }) {
   return (
     <header className="border-b">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4">
-        {organizador.tieneLogo ? (
+        {organizador.logoVersion ? (
           // eslint-disable-next-line @next/next/no-img-element -- imagen servida desde la base
           <img
-            src={`/logo/${organizador.id}`}
+            src={`/logo/${organizador.id}?v=${organizador.logoVersion}`}
             alt=""
             className="size-8 rounded-md object-contain"
           />
