@@ -43,8 +43,9 @@ export type EstadoTablero = {
 
 export type OperacionAsignaciones = "pagar" | "liberar" | "cancelar";
 
-// Admin y operador pueden apartar, vender, confirmar pagos, liberar y cancelar;
-// todo queda en el historial con el usuario que lo hizo.
+// Admin y operador pueden apartar, vender, confirmar pagos, liberar y cancelar apartados;
+// cancelar una venta ya pagada (devolución) es solo del admin. Todo queda en el historial
+// con el usuario que lo hizo.
 
 export async function apartarAccion(
   rifaId: string,
@@ -133,7 +134,11 @@ export async function operarAsignacionesAccion(
     if (operacion === "pagar") await confirmarPago(db, datos);
     if (operacion === "liberar") await liberarAsignaciones(db, datos);
     if (operacion === "cancelar") {
-      await cancelarAsignaciones(db, { ...datos, motivo: typeof motivo === "string" ? motivo : null });
+      await cancelarAsignaciones(db, {
+        ...datos,
+        motivo: typeof motivo === "string" ? motivo : null,
+        soloPendientes: usuario.rol !== "admin",
+      });
     }
   } catch (error) {
     refresh();

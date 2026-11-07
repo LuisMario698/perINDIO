@@ -90,6 +90,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
           precioNumero: rifa.precioNumero,
           plazoApartadoHoras: rifa.plazoApartadoHoras,
           estado: rifa.estado,
+          puedeCancelarPagados: usuario.rol === "admin",
         }}
         ocupados={ocupados}
         acciones={{

@@ -10,7 +10,10 @@ export function Navegacion({ esAdmin }: { esAdmin: boolean }) {
   const secciones = [
     { href: "/", nombre: "Rifas", activa: ruta === "/" || ruta.startsWith("/rifas") },
     ...(esAdmin
-      ? [{ href: "/configuracion", nombre: "Organizador", activa: ruta.startsWith("/configuracion") }]
+      ? [
+          { href: "/usuarios", nombre: "Usuarios", activa: ruta.startsWith("/usuarios") },
+          { href: "/configuracion", nombre: "Organizador", activa: ruta.startsWith("/configuracion") },
+        ]
       : []),
   ];
   return (

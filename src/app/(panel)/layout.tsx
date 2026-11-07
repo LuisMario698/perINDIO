@@ -34,9 +34,13 @@ async function MenuUsuario() {
     <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm">
       <Navegacion esAdmin={usuario.rol === "admin"} />
       <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />
-      <span className="truncate" title={usuario.email}>
+      <Link
+        href="/cuenta"
+        className="truncate underline-offset-4 hover:underline"
+        title={`${usuario.email} · Mi cuenta`}
+      >
         {usuario.nombre}
-      </span>
+      </Link>
       <Badge variant="secondary">{usuario.rol === "admin" ? "Admin" : "Operador"}</Badge>
       <form action={cerrarSesion}>
         <Button type="submit" variant="ghost" size="sm">

@@ -17,6 +17,8 @@ export type RifaTablero = {
   precioNumero: string;
   plazoApartadoHoras: number;
   estado: "activa" | "cerrada" | "sorteada";
+  /** Solo el admin cancela ventas ya pagadas (devoluciones); el operador, solo apartados. */
+  puedeCancelarPagados: boolean;
 };
 
 type Accion = (estado: EstadoTablero, formData: FormData) => Promise<EstadoTablero>;

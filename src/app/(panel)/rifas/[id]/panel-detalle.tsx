@@ -143,6 +143,7 @@ export function PanelDetalle({
             Liberar el {etiqueta}
           </BotonOperacion>
         )}
+        {(pendiente || rifa.puedeCancelarPagados) && (
         <BotonOperacion
           accion={acciones.cancelar}
           ids={[id]}
@@ -158,6 +159,7 @@ export function PanelDetalle({
         >
           {pendiente ? "Cancelar apartado" : "Cancelar venta"}
         </BotonOperacion>
+        )}
       </div>
 
       {delComprador.length > 1 && (
