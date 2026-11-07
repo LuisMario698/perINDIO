@@ -47,34 +47,37 @@ async function Contenido({ params }: Pick<PageProps<"/p/[token]">, "params">) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <EncabezadoPublico organizador={organizador} />
-      <main className="mx-auto w-full max-w-xl flex-1 space-y-5 px-4 py-6">
-        <section className="space-y-3 rounded-xl border p-4">
-          <div className="flex items-start justify-between gap-3">
+      <section className="fondo-marca border-t border-white/10">
+        <div className="mx-auto w-full max-w-xl space-y-3 px-4 pt-5 pb-6">
+          <p className="text-sm text-white/70">{rifa.nombre} · tu pedido</p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">{rifa.nombre}</p>
-              <p className="text-sm text-muted-foreground">Folio</p>
-              <p className="font-mono text-3xl font-semibold tracking-wider">{pedido.pedido.folio}</p>
+              <p className="text-xs tracking-wide text-white/70 uppercase">Folio</p>
+              <p className="titulo-marca text-5xl tracking-wider text-marca-oro">{pedido.pedido.folio}</p>
             </div>
             <span
-              className={cn("rounded-full px-3 py-1 text-sm font-medium", COLOR_PEDIDO[pedido.estado])}
+              className={cn("rounded-full px-3 py-1 text-sm font-semibold", COLOR_PEDIDO[pedido.estado])}
             >
               {NOMBRE_ESTADO_PEDIDO[pedido.estado]}
             </span>
           </div>
-          <p className="text-sm">
-            A nombre de <strong>{pedido.comprador.nombre}</strong>
+          <p className="text-white/90">
+            A nombre de <strong className="text-white">{pedido.comprador.nombre}</strong>
           </p>
-          <Vencimiento pedido={pedido} />
-        </section>
+        </div>
+      </section>
+      <main className="mx-auto w-full max-w-xl flex-1 space-y-6 px-4 py-6">
+        <Seguimiento estado={pedido.estado} />
+        <Vencimiento pedido={pedido} />
 
         <section className="space-y-2">
-          <h2 className="font-semibold">Tus números</h2>
+          <h2 className="titulo-marca text-xl">Tus números</h2>
           <ul className="flex flex-wrap gap-1.5">
             {pedido.numeros.map((n) => (
               <li
                 key={n.numero}
                 className={cn(
-                  "rounded-md border px-2.5 py-1 font-mono text-sm",
+                  "rounded-md border px-3 py-1.5 font-mono text-base",
                   n.estado === "vendido" && "border-emerald-300 bg-emerald-50",
                   (n.estado === "liberado" || n.estado === "cancelado") &&
                     "text-muted-foreground line-through",
@@ -110,7 +113,7 @@ async function Contenido({ params }: Pick<PageProps<"/p/[token]">, "params">) {
 
         {pendiente && (
           <section className="space-y-3">
-            <h2 className="font-semibold">Cómo pagar</h2>
+            <h2 className="titulo-marca text-xl">Cómo pagar</h2>
             <p className="whitespace-pre-line rounded-xl bg-muted/50 p-4 text-sm">
               {pedido.instruccionesPago ??
                 "El organizador te dirá cómo pagar. Escríbele por WhatsApp con tu folio."}
@@ -125,9 +128,9 @@ async function Contenido({ params }: Pick<PageProps<"/p/[token]">, "params">) {
                 )}
                 target="_blank"
                 rel="noopener"
-                className={buttonVariants({ size: "lg", className: "w-full" })}
+                className={buttonVariants({ size: "lg", className: "h-12 w-full text-base" })}
               >
-                Enviar comprobante por WhatsApp
+                Ya pagué: enviar comprobante por WhatsApp
               </a>
             )}
             <p className="text-xs text-muted-foreground">
@@ -154,6 +157,39 @@ async function Contenido({ params }: Pick<PageProps<"/p/[token]">, "params">) {
       </main>
       <PiePublico />
     </div>
+  );
+}
+
+/** Los tres pasos del comprador, con el actual resaltado. */
+function Seguimiento({ estado }: { estado: EstadoPedido }) {
+  if (estado === "cancelado") return null;
+  const paso = estado === "pagado" ? 3 : 2;
+  const pasos = ["Apartado", estado === "vencido" ? "Pago vencido" : "Paga y manda tu comprobante", "Pago confirmado"];
+  return (
+    <ol className="grid grid-cols-3 gap-2" aria-label="Avance de tu pedido">
+      {pasos.map((nombre, i) => {
+        const numero = i + 1;
+        const hecho = numero < paso || (numero === 3 && paso === 3);
+        const actual = numero === paso && !hecho;
+        return (
+          <li key={nombre} aria-current={actual ? "step" : undefined} className="space-y-1.5 text-center">
+            <span
+              className={cn(
+                "titulo-marca mx-auto flex size-9 items-center justify-center rounded-full text-lg",
+                hecho && "bg-primary text-primary-foreground",
+                actual && (estado === "vencido" ? "bg-marca-rojo text-white" : "bg-marca-oro text-marca-noche"),
+                !hecho && !actual && "bg-muted text-muted-foreground",
+              )}
+            >
+              {hecho ? "✓" : numero}
+            </span>
+            <span className={cn("block text-xs leading-tight", actual ? "font-semibold" : "text-muted-foreground")}>
+              {nombre}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

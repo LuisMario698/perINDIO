@@ -30,9 +30,9 @@ export default function PaginaResumen() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Resumen</h1>
-        <p className="text-sm text-muted-foreground">
-          Lo cobrado, lo pendiente y el estado de los números de cada rifa.
+        <h1 className="titulo-marca text-3xl">Resumen</h1>
+        <p className="text-muted-foreground">
+          Cuánto llevas cobrado, cuánto falta por cobrar y cómo va cada rifa.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
@@ -65,7 +65,7 @@ async function Contenido() {
       <Indicadores lista={lista} />
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold">Rifas</h2>
+          <h2 className="titulo-marca text-2xl">Tus rifas</h2>
           {esAdmin && (
             <Link href="/rifas/nueva" className={buttonVariants()}>
               Nueva rifa
@@ -139,7 +139,7 @@ function Indicador({
   return (
     <div className={cn("space-y-1 rounded-xl border p-4", resaltar && "border-red-300 bg-red-50")}>
       <dt className="text-sm text-muted-foreground">{nombre}</dt>
-      <dd className="text-2xl font-semibold tracking-tight tabular-nums">{valor}</dd>
+      <dd className="titulo-marca text-3xl tabular-nums">{valor}</dd>
       <dd className="text-xs text-muted-foreground">{nota}</dd>
     </div>
   );
@@ -162,7 +162,7 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
+        <CardTitle className="titulo-marca text-2xl">
           <Link href={`/rifas/${rifa.id}`} className="hover:underline">
             {rifa.nombre}
           </Link>
@@ -217,7 +217,15 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
           {rifa.fechaSorteo && ` Sorteo: ${formatearFecha(rifa.fechaSorteo)}.`}
         </p>
       </CardContent>
-      <CardFooter className="justify-end gap-2">
+      <CardFooter className="flex-wrap justify-end gap-2">
+        {rifa.apartados + rifa.vencidos > 0 && (
+          <Link
+            href={`/rifas/${rifa.id}/pedidos`}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "mr-auto" })}
+          >
+            Cobrar pendientes ({formatearEntero(rifa.apartados + rifa.vencidos)})
+          </Link>
+        )}
         {esAdmin && (
           <Link
             href={`/rifas/${rifa.id}/configuracion`}
@@ -233,7 +241,7 @@ function TarjetaRifa({ rifa, esAdmin }: { rifa: RifaConResumen; esAdmin: boolean
           Historial
         </Link>
         <Link href={`/rifas/${rifa.id}`} className={buttonVariants({ size: "sm" })}>
-          Ver números
+          {rifa.estado === "activa" ? "Vender números →" : "Ver números"}
         </Link>
       </CardFooter>
     </Card>

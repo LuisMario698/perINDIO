@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { Logo } from "@/components/logo";
+import { MarcaApp } from "@/components/marca";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { obtenerUsuarioActual } from "@/server/sesion";
@@ -12,14 +12,19 @@ import { Navegacion } from "./navegacion";
 export default function LayoutPanel({ children }: LayoutProps<"/">) {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <Logo className="size-6" />
-            perINDIO
-          </Link>
-          <Suspense fallback={null}>
-            <MenuUsuario />
+      {/* Dos filas: marca y usuario arriba; secciones abajo (en celular se desplazan de lado). */}
+      <header className="fondo-marca">
+        <div className="mx-auto w-full max-w-5xl px-4">
+          <div className="flex h-14 items-center justify-between gap-4">
+            <Link href="/" aria-label="perINDIO, inicio">
+              <MarcaApp />
+            </Link>
+            <Suspense fallback={null}>
+              <MenuUsuario />
+            </Suspense>
+          </div>
+          <Suspense fallback={<div className="h-10" />}>
+            <Secciones />
           </Suspense>
         </div>
       </header>
@@ -28,22 +33,27 @@ export default function LayoutPanel({ children }: LayoutProps<"/">) {
   );
 }
 
+async function Secciones() {
+  const usuario = await obtenerUsuarioActual();
+  return <Navegacion esAdmin={usuario.rol === "admin"} />;
+}
+
 async function MenuUsuario() {
   const usuario = await obtenerUsuarioActual();
   return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm">
-      <Navegacion esAdmin={usuario.rol === "admin"} />
-      <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />
+    <div className="flex min-w-0 items-center gap-2 text-sm">
       <Link
         href="/cuenta"
-        className="truncate underline-offset-4 hover:underline"
+        className="truncate text-white underline-offset-4 hover:underline"
         title={`${usuario.email} · Mi cuenta`}
       >
         {usuario.nombre}
       </Link>
-      <Badge variant="secondary">{usuario.rol === "admin" ? "Admin" : "Operador"}</Badge>
-      <form action={cerrarSesion}>
-        <Button type="submit" variant="ghost" size="sm">
+      <Badge className="shrink-0 bg-marca-oro text-marca-noche">
+        {usuario.rol === "admin" ? "Admin" : "Operador"}
+      </Badge>
+      <form action={cerrarSesion} className="shrink-0">
+        <Button type="submit" variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-white">
           Salir
         </Button>
       </form>

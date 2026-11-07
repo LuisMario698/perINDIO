@@ -34,71 +34,82 @@ async function Contenido({ params }: Pick<PageProps<"/r/[slug]">, "params">) {
   if (!datos) notFound();
   const { rifa, organizador } = datos;
   const disponibles = rifa.cantidadNumeros - datos.ocupados.length;
+  const sorteada = rifa.estado === "sorteada";
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <EncabezadoPublico organizador={organizador} />
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6">
-        <section className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{rifa.nombre}</h1>
-          <p className="text-lg">
-            <strong>{formatearDinero(rifa.precioNumero)}</strong> por número
-            {rifa.fechaSorteo && (
-              <span className="text-muted-foreground">
-                {" "}
-                · Sorteo: {formatearFecha(rifa.fechaSorteo)}
-              </span>
-            )}
-          </p>
-          {rifa.descripcion && (
-            <p className="whitespace-pre-line text-sm text-muted-foreground">{rifa.descripcion}</p>
-          )}
-        </section>
 
-        {datos.premios.length > 0 && <Premios datos={datos} />}
-
-        {rifa.estado === "activa" ? (
-          <section className="space-y-3">
-            <div>
-              <h2 className="font-semibold">Elige tus números</h2>
-              <p className="text-sm text-muted-foreground">
-                {formatearEntero(disponibles)} disponibles de {formatearEntero(rifa.cantidadNumeros)}.
-                Al apartar tienes {rifa.plazoPublicoHoras} horas para pagar; si no, los números se
-                liberan.
-              </p>
+      {/* Portada, como los anuncios: nombre, precio del boleto, fecha y premios. */}
+      <section className="fondo-marca border-t border-white/10">
+        <div className="mx-auto w-full max-w-5xl space-y-5 px-4 pt-6 pb-8">
+          <h1 className="titulo-marca text-4xl text-white sm:text-5xl">{rifa.nombre}</h1>
+          <div className="flex flex-wrap items-stretch gap-3">
+            <div className="rounded-xl bg-marca-oro px-4 py-2 text-marca-noche">
+              <p className="text-xs font-semibold tracking-wide uppercase">Boleto</p>
+              <p className="titulo-marca text-3xl">{formatearDinero(rifa.precioNumero)}</p>
             </div>
-            <SeleccionPublica
-              rifa={{
-                numeroInicial: rifa.numeroInicial,
-                cantidadNumeros: rifa.cantidadNumeros,
-                digitos: rifa.digitos,
-                precioNumero: rifa.precioNumero,
-                maxNumeros: rifa.maxNumerosPublico,
-                plazoHoras: rifa.plazoPublicoHoras,
-              }}
-              ocupados={datos.ocupados}
-              accion={apartarPublicoAccion.bind(null, rifa.slug)}
-            />
-          </section>
+            {rifa.fechaSorteo && (
+              <div className="rounded-xl bg-marca-rojo px-4 py-2 text-white">
+                <p className="text-xs font-semibold tracking-wide uppercase">
+                  {sorteada ? "Se jugó el" : "Se juega el"}
+                </p>
+                <p className="titulo-marca text-2xl">{formatearFecha(rifa.fechaSorteo)}</p>
+              </div>
+            )}
+          </div>
+          {rifa.descripcion && (
+            <p className="max-w-2xl whitespace-pre-line text-white/80">{rifa.descripcion}</p>
+          )}
+          {datos.premios.length > 0 && <Premios datos={datos} />}
+          {rifa.estado === "activa" && (
+            <Avance disponibles={disponibles} total={rifa.cantidadNumeros} />
+          )}
+        </div>
+      </section>
+
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-8">
+        {rifa.estado === "activa" ? (
+          <>
+            <ComoParticipar horas={rifa.plazoPublicoHoras} maximo={rifa.maxNumerosPublico} />
+            <section className="space-y-3" aria-labelledby="elige">
+              <h2 id="elige" className="titulo-marca text-2xl">
+                Elige tus números
+              </h2>
+              <SeleccionPublica
+                rifa={{
+                  numeroInicial: rifa.numeroInicial,
+                  cantidadNumeros: rifa.cantidadNumeros,
+                  digitos: rifa.digitos,
+                  precioNumero: rifa.precioNumero,
+                  maxNumeros: rifa.maxNumerosPublico,
+                  plazoHoras: rifa.plazoPublicoHoras,
+                }}
+                ocupados={datos.ocupados}
+                accion={apartarPublicoAccion.bind(null, rifa.slug)}
+              />
+            </section>
+          </>
         ) : rifa.estado === "cerrada" ? (
-          <p className="rounded-xl border bg-muted/50 p-4 text-sm">
-            Las ventas de esta rifa ya cerraron. Si apartaste números, revisa el enlace de tu pedido.
+          <p className="rounded-xl border-2 border-marca-oro bg-amber-50 p-5 text-amber-950">
+            <strong className="block text-lg">Las ventas ya cerraron.</strong>
+            Pronto se juega el sorteo. Si apartaste números, revisa el enlace de tu pedido.
           </p>
         ) : null}
 
         {organizador.whatsapp && (
-          <p className="text-sm text-muted-foreground">
-            ¿Dudas?{" "}
-            <a
-              href={enlaceWhatsApp(organizador.whatsapp, `Hola, tengo una duda sobre la ${rifa.nombre}.`)}
-              className="underline hover:text-foreground"
-              target="_blank"
-              rel="noopener"
-            >
-              Escríbele al organizador por WhatsApp
-            </a>
-            .
-          </p>
+          <a
+            href={enlaceWhatsApp(organizador.whatsapp, `Hola, tengo una duda sobre la ${rifa.nombre}.`)}
+            className="flex items-center justify-between gap-3 rounded-xl border p-4 hover:bg-muted"
+            target="_blank"
+            rel="noopener"
+          >
+            <span>
+              <strong className="block">¿Tienes dudas?</strong>
+              <span className="text-sm text-muted-foreground">Escríbele al organizador por WhatsApp.</span>
+            </span>
+            <span aria-hidden className="text-2xl text-primary">→</span>
+          </a>
         )}
       </main>
       <PiePublico />
@@ -106,25 +117,81 @@ async function Contenido({ params }: Pick<PageProps<"/r/[slug]">, "params">) {
   );
 }
 
+function Avance({ disponibles, total }: { disponibles: number; total: number }) {
+  const vendidos = total - disponibles;
+  return (
+    <div className="max-w-md space-y-1.5">
+      <div className="flex justify-between text-sm text-white/80">
+        <span>
+          <strong className="text-white">{formatearEntero(disponibles)}</strong> números libres de{" "}
+          {formatearEntero(total)}
+        </span>
+        <span>{Math.round((vendidos / total) * 100)}% ocupado</span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-white/15" aria-hidden>
+        <div className="h-full rounded-full bg-marca-oro" style={{ width: `${(vendidos / total) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ComoParticipar({ horas, maximo }: { horas: number; maximo: number }) {
+  const pasos = [
+    { titulo: "Elige tus números", texto: `Toca los números libres que quieras (hasta ${maximo}).` },
+    { titulo: "Apártalos", texto: "Escribe tu nombre y tu WhatsApp. Te damos un folio." },
+    {
+      titulo: "Paga y manda tu comprobante",
+      texto: `Tienes ${horas} horas. Envía tu comprobante por WhatsApp con un botón.`,
+    },
+  ];
+  return (
+    <section aria-labelledby="como" className="space-y-3">
+      <h2 id="como" className="titulo-marca text-2xl">
+        ¿Cómo participar?
+      </h2>
+      <ol className="grid gap-3 sm:grid-cols-3">
+        {pasos.map((paso, i) => (
+          <li key={paso.titulo} className="flex gap-3 rounded-xl border p-4">
+            <span
+              aria-hidden
+              className="titulo-marca flex size-9 shrink-0 items-center justify-center rounded-full bg-marca-noche text-lg text-marca-oro"
+            >
+              {i + 1}
+            </span>
+            <span>
+              <strong className="block">{paso.titulo}</strong>
+              <span className="text-sm text-muted-foreground">{paso.texto}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function Premios({ datos }: { datos: RifaPublica }) {
   const sorteada = datos.rifa.estado === "sorteada";
   return (
-    <section className="space-y-2">
-      <h2 className="font-semibold">{sorteada ? "Resultados del sorteo" : "Premios"}</h2>
-      <ol className="divide-y rounded-xl border">
+    <section className="space-y-2" aria-labelledby="premios">
+      <h2 id="premios" className="titulo-marca text-xl text-marca-oro">
+        {sorteada ? "Resultados del sorteo" : "Premios"}
+      </h2>
+      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {datos.premios.map((premio) => (
-          <li key={premio.lugar} className="flex flex-wrap items-baseline justify-between gap-2 p-3">
-            <span>
-              <span className="font-semibold">{premio.lugar}.º</span> {premio.descripcion}
-            </span>
+          <li
+            key={premio.lugar}
+            className="rounded-xl border border-white/15 bg-white/5 p-3"
+          >
+            <p className="titulo-marca text-sm text-marca-oro">{premio.lugar}.º lugar</p>
+            <p className="font-medium text-white">{premio.descripcion}</p>
             {sorteada && premio.numeroGanador !== null && (
-              <span className="text-sm">
-                Número ganador{" "}
-                <strong className="font-mono">
+              <p className="mt-2 flex items-baseline gap-2 border-t border-white/10 pt-2 text-sm text-white/80">
+                Ganó el
+                <strong className="titulo-marca text-2xl text-white">
                   {formatearNumero(premio.numeroGanador, datos.rifa.digitos)}
                 </strong>
-                {premio.ganador ? ` · ${premio.ganador}` : " · sin comprador"}
-              </span>
+                {premio.ganador ? `· ${premio.ganador}` : "· sin comprador"}
+              </p>
             )}
           </li>
         ))}

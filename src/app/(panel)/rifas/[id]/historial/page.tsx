@@ -88,7 +88,7 @@ async function Historial({ params, searchParams }: PageProps<"/rifas/[id]/histor
         >
           ← Números
         </Link>
-        <h1 className="text-xl font-semibold tracking-tight">Historial</h1>
+        <h1 className="titulo-marca text-3xl">Historial</h1>
         <p className="text-sm text-muted-foreground">
           {rifa.nombre} · apartados, ventas, pagos, cancelaciones y liberaciones, con quién los hizo.
         </p>

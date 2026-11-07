@@ -10,7 +10,7 @@ export default function ErrorDelPanel({ error, retry }: { error: unknown; retry:
   const digest = error instanceof Error && "digest" in error ? String(error.digest) : null;
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">Algo salió mal</h1>
+      <h1 className="titulo-marca text-3xl">Algo salió mal</h1>
       <p className="text-sm text-muted-foreground">
         No se pudo completar la operación. Revisa tu conexión e inténtalo de nuevo; si sigue
         pasando, avisa al administrador.

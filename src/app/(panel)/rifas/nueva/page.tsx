@@ -12,7 +12,7 @@ export default function PaginaNuevaRifa() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Nueva rifa</h1>
+        <h1 className="titulo-marca text-3xl">Nueva rifa</h1>
         <p className="text-sm text-muted-foreground">
           Al crearla se generan todos sus números, listos para apartar.
         </p>

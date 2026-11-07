@@ -11,7 +11,7 @@ export default function PaginaVendedores() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Vendedores</h1>
+        <h1 className="titulo-marca text-3xl">Vendedores</h1>
         <p className="text-sm text-muted-foreground">
           Todas las rifas juntas. Para una sola, abre la rifa y su pestaña Vendedores.
         </p>

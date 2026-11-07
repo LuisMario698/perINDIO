@@ -61,7 +61,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]/sorteo">, "para
   return (
     <>
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Sorteo · {rifa.nombre}</h1>
+        <h1 className="titulo-marca text-3xl">Sorteo · {rifa.nombre}</h1>
         {rifa.estado === "sorteada" ? (
           <p className="text-sm text-muted-foreground">
             Sorteada el {rifa.sorteadaEn ? formatearFechaHora(rifa.sorteadaEn) : "—"}. La rifa queda

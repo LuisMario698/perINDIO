@@ -18,15 +18,15 @@ export function Navegacion({ esAdmin }: { esAdmin: boolean }) {
       : []),
   ];
   return (
-    <nav aria-label="Secciones del panel" className="flex items-center gap-1">
+    <nav aria-label="Secciones del panel" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2">
       {secciones.map((s) => (
         <Link
           key={s.href}
           href={s.href}
           aria-current={s.activa ? "page" : undefined}
           className={cn(
-            "rounded-md px-2.5 py-1 text-sm transition-colors",
-            s.activa ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+            "shrink-0 rounded-md px-3 py-1.5 text-sm transition-colors",
+            s.activa ? "bg-white/15 font-medium text-white" : "text-white/70 hover:bg-white/10 hover:text-white",
           )}
         >
           {s.nombre}

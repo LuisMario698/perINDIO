@@ -172,7 +172,7 @@ export function Tablero({ rifa, ocupados, acciones, urlBase }: Props) {
               className={cn(
                 "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
                 filtro === f.valor
-                  ? "border-foreground bg-foreground text-background"
+                  ? "border-marca-noche bg-marca-noche text-white"
                   : "border-border hover:bg-muted",
               )}
             >
@@ -196,18 +196,23 @@ export function Tablero({ rifa, ocupados, acciones, urlBase }: Props) {
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-2">
+          {activa && (
+            <p className="rounded-lg border-l-4 border-marca-oro bg-amber-50/60 px-3 py-2 text-sm">
+              <strong>Toca un número blanco</strong> para apartarlo o venderlo.{" "}
+              <strong>Toca uno de color</strong> para ver quién lo tiene, cobrarlo o liberarlo.
+            </p>
+          )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {visibles.length === numeros.length
               ? `${formatearEntero(numeros.length)} números`
               : `${formatearEntero(visibles.length)} de ${formatearEntero(numeros.length)} números`}
-            {activa && " · Toca los disponibles para apartarlos."}
           </p>
           {visibles.length === 0 ? (
             <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               Ningún número coincide con el filtro o la búsqueda.
             </p>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-1.5">
               {visibles.map((n) => {
                 const ocupado = porNumero.get(n);
                 return (
@@ -326,11 +331,11 @@ const Celda = memo(function Celda({
       aria-pressed={categoria === "disponible" ? seleccionado : undefined}
       title={descripcion}
       className={cn(
-        "h-9 rounded-md border font-mono text-xs tabular-nums transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "h-10 rounded-md border font-mono text-sm tabular-nums transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         seleccionado
-          ? "border-foreground bg-foreground text-background hover:bg-foreground/90"
+          ? "border-marca-noche bg-marca-noche font-semibold text-marca-oro hover:bg-marca-noche/90"
           : ESTILO_CATEGORIA[categoria],
-        abierto && "ring-2 ring-foreground ring-offset-1",
+        abierto && "ring-2 ring-marca-noche ring-offset-1",
       )}
     >
       {etiqueta}

@@ -34,7 +34,7 @@ async function Configuracion({ params }: Pick<PageProps<"/rifas/[id]/configuraci
   if (rifa.estado === "sorteada") {
     return (
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Configurar rifa</h1>
+        <h1 className="titulo-marca text-3xl">Configurar rifa</h1>
         <p className="text-sm text-muted-foreground">
           {rifa.nombre} ya fue sorteada; su configuración queda fija.
         </p>
@@ -46,7 +46,7 @@ async function Configuracion({ params }: Pick<PageProps<"/rifas/[id]/configuraci
   return (
     <>
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Configurar rifa</h1>
+        <h1 className="titulo-marca text-3xl">Configurar rifa</h1>
         <p className="text-sm text-muted-foreground">{rifa.nombre}</p>
       </div>
       <Card>

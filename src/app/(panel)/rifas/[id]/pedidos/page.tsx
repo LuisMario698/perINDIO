@@ -34,7 +34,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]/pedidos">, "par
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Pedidos · {rifa.nombre}</h1>
+        <h1 className="titulo-marca text-3xl">Pedidos · {rifa.nombre}</h1>
         <p className="text-sm text-muted-foreground">
           Cada apartado es un pedido con folio. Cuando un comprador te mande su comprobante,
           búscalo por folio, nombre o teléfono y confirma su pago.

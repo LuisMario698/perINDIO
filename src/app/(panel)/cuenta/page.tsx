@@ -10,7 +10,7 @@ export const metadata = { title: "Mi cuenta · perINDIO" };
 export default function PaginaCuenta() {
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight">Mi cuenta</h1>
+      <h1 className="titulo-marca text-3xl">Mi cuenta</h1>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando…</p>}>
         <Datos />
       </Suspense>

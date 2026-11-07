@@ -6,6 +6,10 @@ Los actores, la matriz de permisos, los estados y cada flujo de principio a fin 
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Drizzle ORM · PostgreSQL 17 · jsPDF · Vitest.
 
+## Diseño
+
+La interfaz usa la identidad de Sorteos El Indio (Puerto Peñasco): fondo azul noche con rayos, títulos en la letra Anton de sus anuncios, dorado y rojo para precio y fecha, y el verde de sus botones de WhatsApp para las acciones principales (oscurecido para que el texto blanco se lea bien). Los colores están en `src/app/globals.css` (`--marca-*`, clases `fondo-marca` y `titulo-marca`). El logo del organizador se sube desde **Organizador**.
+
 ## Requisitos
 
 - Node.js 22 o superior y pnpm
@@ -57,7 +61,7 @@ La página de inicio muestra si la app llega a la base de datos; `GET /api/healt
 
 `pnpm db:seed` crea siempre los mismos datos:
 
-- **Organizador demo** con WhatsApp y datos de pago ficticios.
+- Organizador **Sorteos El Indio Peñasco** con WhatsApp y datos de pago ficticios (los mensajes de la demo no le llegan a nadie).
 - **Rifa Pro Fondos 2026**: 2,000 números (0000–1999) a $100, plazo de 48 h, liberación manual y 3 premios. Tiene ventas, apartados vigentes, 18 apartados vencidos esperando que el organizador los libere y algunas liberaciones en el historial.
 - **Rifa Express**: 100 números (00–99) a $50, plazo de 24 h, liberación automática y 2 premios, con 5 apartados vencidos que se liberan en cuanto corre la liberación automática.
 - **Rifa Navideña 2025**: ya sorteada, con sus ganadores publicados.

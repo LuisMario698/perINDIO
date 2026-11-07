@@ -96,12 +96,15 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
             />
             Solo disponibles
           </label>
-          <span className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <span className="flex items-center gap-1.5">
-              <span className={cn("size-3 rounded", COLOR_ESTADO.disponible)} /> Disponible
+              <span className={cn("size-4 rounded", COLOR_ESTADO.disponible)} /> Libre
+            </span>
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="size-4 rounded bg-muted" /> Ocupado
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-muted" /> Ocupado
+              <span className="size-4 rounded bg-primary" /> Tu elección
             </span>
           </span>
         </div>
@@ -110,7 +113,7 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
             Ningún número coincide con la búsqueda.
           </p>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] gap-1">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))] gap-1.5">
             {visibles.map((n) => (
               <Celda
                 key={n}
@@ -146,10 +149,12 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
           ))}
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold">
+              <h3 className="titulo-marca text-xl">
                 {elegidos.length ? `Apartar ${cantidad}` : "Elige tus números"}
               </h3>
-              <p className="text-sm text-muted-foreground">Total: {formatearDinero(total)}</p>
+              <p className="text-sm">
+                Total: <strong className="text-base">{formatearDinero(total)}</strong>
+              </p>
             </div>
             <Button
               type="button"
@@ -168,7 +173,7 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
                   <button
                     type="button"
                     onClick={() => tocar(n)}
-                    className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2 font-mono text-xs text-background"
+                    className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-2.5 font-mono text-sm text-primary-foreground"
                     aria-label={`Quitar ${formatearNumero(n, rifa.digitos)}`}
                   >
                     {formatearNumero(n, rifa.digitos)} <span aria-hidden>×</span>
@@ -225,7 +230,7 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
               {estado.error}
             </p>
           )}
-          <Button type="submit" size="lg" className="w-full" disabled={enviando || elegidos.length === 0}>
+          <Button type="submit" size="lg" className="h-11 w-full text-base" disabled={enviando || elegidos.length === 0}>
             {enviando ? "Apartando…" : elegidos.length ? `Apartar ${cantidad}` : "Elige al menos un número"}
           </Button>
           <p className="text-xs text-muted-foreground">
@@ -236,12 +241,12 @@ export function SeleccionPublica({ rifa, ocupados, accion }: Props) {
       </aside>
 
       {elegidos.length > 0 && !hojaAbierta && (
-        <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t bg-background p-3 shadow-2xl lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 bg-marca-noche p-3 text-white shadow-2xl lg:hidden">
           <p className="text-sm">
-            <strong>{cantidad}</strong> · {formatearDinero(total)}
+            <strong className="text-marca-oro">{cantidad}</strong> · {formatearDinero(total)}
           </p>
-          <Button size="lg" onClick={() => setHojaAbierta(true)}>
-            Apartar
+          <Button size="lg" className="h-11 px-5 text-base" onClick={() => setHojaAbierta(true)}>
+            Apartar →
           </Button>
         </div>
       )}
@@ -277,12 +282,12 @@ const Celda = memo(function Celda({
       aria-pressed={ocupado ? undefined : elegido}
       aria-label={`${etiqueta}, ${ocupado ? "ocupado" : "disponible"}`}
       className={cn(
-        "h-9 rounded-md border font-mono text-xs tabular-nums transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "h-10 rounded-md border font-mono text-sm tabular-nums transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         ocupado
           ? "cursor-not-allowed border-transparent bg-muted text-muted-foreground/60 line-through"
           : elegido
-            ? "border-foreground bg-foreground text-background"
-            : "border-border bg-background hover:bg-muted disabled:opacity-50",
+            ? "border-primary bg-primary font-semibold text-primary-foreground"
+            : "border-border bg-background hover:border-primary hover:bg-green-50 disabled:opacity-50",
       )}
     >
       {etiqueta}

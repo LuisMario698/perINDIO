@@ -27,7 +27,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]/vendedores">, "
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold tracking-tight">Vendedores · {rifa.nombre}</h1>
+      <h1 className="titulo-marca text-3xl">Vendedores · {rifa.nombre}</h1>
       <TablasVendedores reporte={await reporteVendedores(db, usuario.organizadorId, rifa.id)} />
     </div>
   );

@@ -13,7 +13,7 @@ export default function PaginaOrganizador() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Perfil del organizador</h1>
+        <h1 className="titulo-marca text-3xl">Perfil del organizador</h1>
         <p className="text-sm text-muted-foreground">
           Lo ven los compradores en la página de cada rifa, en su pedido, en los mensajes de
           WhatsApp y en los PDF.

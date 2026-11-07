@@ -65,7 +65,7 @@ async function Contenido({ params }: Pick<PageProps<"/rifas/[id]">, "params">) {
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← Rifas
           </Link>
-          <h1 className="text-xl font-semibold tracking-tight">{rifa.nombre}</h1>
+          <h1 className="titulo-marca text-3xl">{rifa.nombre}</h1>
           <p className="text-sm text-muted-foreground">{detalles.join(" · ")}</p>
           <p className="text-sm">
             Cobrado <strong className="tabular-nums">{formatearDinero(sumar("confirmado"))}</strong>{" "}

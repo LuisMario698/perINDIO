@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-import { Logo } from "@/components/logo";
 import {
   Card,
   CardContent,
@@ -18,14 +17,15 @@ export const metadata = { title: "Entrar · perINDIO" };
 
 export default function PaginaLogin({ searchParams }: PageProps<"/login">) {
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
+    <main className="fondo-marca flex flex-1 items-center justify-center px-4 py-16">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Logo className="size-7" />
-            perINDIO
+          <CardTitle className="titulo-marca text-4xl">
+            per<span className="text-marca-rojo">INDIO</span>
           </CardTitle>
-          <CardDescription>Entra con la cuenta que te dio el administrador.</CardDescription>
+          <CardDescription>
+            Administración de rifas. Entra con la cuenta que te dio el administrador.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<div className="h-48" />}>

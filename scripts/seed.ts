@@ -61,11 +61,11 @@ async function main() {
     const [organizador] = await db
       .insert(organizadores)
       .values({
-        nombre: "Organizador demo",
-        // Datos ficticios para la demo.
+        nombre: "Sorteos El Indio Peñasco",
+        // WhatsApp y datos bancarios ficticios: los mensajes de la demo no le llegan a nadie.
         whatsapp: "525500000000",
         datosPago:
-          "Transferencia a BBVA\nCLABE: 012 180 0000 0000 0000\nA nombre de: Organizador demo\n\nO en efectivo con el organizador.",
+          "Transferencia a BBVA\nCLABE: 012 180 0000 0000 0000\nA nombre de: Sorteos El Indio\n\nO en efectivo con el organizador.",
       })
       .returning();
 
