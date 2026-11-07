@@ -11,6 +11,7 @@ export function PestanasRifa({ rifaId, esAdmin }: { rifaId: string; esAdmin: boo
   const pestanas = [
     { href: base, nombre: "Números" },
     { href: `${base}/pedidos`, nombre: "Pedidos" },
+    { href: `${base}/vendedores`, nombre: "Vendedores" },
     { href: `${base}/historial`, nombre: "Historial" },
     ...(esAdmin ? [{ href: `${base}/configuracion`, nombre: "Configurar" }] : []),
   ];

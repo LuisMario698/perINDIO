@@ -9,6 +9,7 @@ export function Navegacion({ esAdmin }: { esAdmin: boolean }) {
   const ruta = usePathname();
   const secciones = [
     { href: "/", nombre: "Rifas", activa: ruta === "/" || ruta.startsWith("/rifas") },
+    { href: "/vendedores", nombre: "Vendedores", activa: ruta.startsWith("/vendedores") },
     ...(esAdmin
       ? [
           { href: "/usuarios", nombre: "Usuarios", activa: ruta.startsWith("/usuarios") },
