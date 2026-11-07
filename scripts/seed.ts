@@ -56,7 +56,13 @@ async function main() {
     const azar = generadorConSemilla(20261026);
     const [organizador] = await db
       .insert(organizadores)
-      .values({ nombre: "Organizador demo" })
+      .values({
+        nombre: "Organizador demo",
+        // Datos ficticios para la demo.
+        whatsapp: "525500000000",
+        datosPago:
+          "Transferencia a BBVA\nCLABE: 012 180 0000 0000 0000\nA nombre de: Organizador demo\n\nO en efectivo con el organizador.",
+      })
       .returning();
 
     // Credenciales de desarrollo definidas en .env (ver .env.example).

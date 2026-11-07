@@ -14,6 +14,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Todo menos el login, la API de autenticación, el health check, el cron (que se protege
-  // con su propio secreto) y los archivos estáticos.
-  matcher: ["/((?!login|api/auth|api/health|api/cron|_next/static|_next/image|favicon.ico).*)"],
+  // con su propio secreto), las páginas públicas (rifa /r, pedido /p, logo) y los estáticos.
+  matcher: [
+    "/((?!login|api/auth|api/health|api/cron|r/|p/|logo/|icon.svg|_next/static|_next/image|favicon.ico).*)",
+  ],
 };
